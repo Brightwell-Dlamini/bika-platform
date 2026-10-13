@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
@@ -10,6 +10,8 @@ import {
   X,
   SlidersHorizontal,
   CheckCircle2,
+  Inbox,
+  UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useIncidents } from '@/app/lib/api/hooks/useIncidents';
@@ -18,7 +20,7 @@ import {
   useTransitionIncident,
   useAssignIncident,
 } from '@/app/lib/api/mutations/useIncidentActions';
-import { statusLabel } from '@/app/lib/statusLabels';
+import { statusLabel, statusColor } from '@/app/lib/statusLabels';
 import type { Incident, IncidentStatus, Severity } from '@/app/types';
 import { QueueKeyboardNav } from './_components/QueueKeyboardNav';
 
@@ -29,17 +31,17 @@ const SEVERITY_STYLE: Record<Severity, string> = {
   LOW: 'bg-slate-700 text-slate-200',
 };
 
-const STATUS_STYLE: Record<IncidentStatus, string> = {
-  submitted: 'bg-slate-700 text-slate-200',
-  triaged: 'bg-sky-500/20 text-sky-300',
-  assigned: 'bg-blue-500/20 text-blue-300',
-  in_progress: 'bg-yellow-500/20 text-yellow-300',
-  awaiting_info: 'bg-amber-500/20 text-amber-300',
-  escalated: 'bg-red-500/20 text-red-300',
-  resolved: 'bg-emerald-500/20 text-emerald-300',
-  closed: 'bg-slate-700 text-slate-300',
-  rejected: 'bg-red-900/40 text-red-300',
-};
+const STATUS_KEYS: IncidentStatus[] = [
+  'submitted',
+  'triaged',
+  'assigned',
+  'in_progress',
+  'awaiting_info',
+  'escalated',
+  'resolved',
+  'closed',
+  'rejected',
+];
 
 export default function QueuePage() {
   const router = useRouter();
@@ -53,22 +55,52 @@ export default function QueuePage() {
   const region = sp.get('region') ?? undefined;
   const q = sp.get('q') ?? '';
 
-  const filters = useMemo(
-    () => ({
-      assignedTo: scope === 'mine' && me.data ? me.data.user.id : undefined,
+  // Debounced search so typing does not thrash the API
+  const [searchDraft, setSearchDraft] = useState(q);
+  useEffect(() => {
+    setSearchDraft(q);
+  }, [q]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (searchDraft !== q) setParam('q', searchDraft || null);
+    }, 320);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchDraft]);
+
+  const filters = useMemo(() => {
+    const base: Record<string, unknown> = {
       status,
       severity,
       region: region as never,
       search: q || undefined,
       onlyOverdue: overdue || undefined,
       limit: 200,
-    }),
-    [scope, status, severity, region, q, overdue, me.data]
-  );
+    };
+    if (scope === 'mine' && me.data) {
+      base.assignedTo = me.data.user.id;
+    }
+    if (scope === 'unassigned') {
+      // Client-side filter after fetch — API supports assignedTo but not "null"
+      base.limit = 300;
+    }
+    if (scope === 'resolved') {
+      base.status = base.status ?? 'resolved';
+    }
+    return base;
+  }, [scope, status, severity, region, q, overdue, me.data]);
 
-  const incidents = useIncidents(filters, {
+  const incidents = useIncidents(filters as never, {
     enabled: scope !== 'mine' || Boolean(me.data),
   });
+
+  const rows = useMemo(() => {
+    let list = incidents.data?.incidents ?? [];
+    if (scope === 'unassigned') {
+      list = list.filter((i) => !i.assignedOfficerId);
+    }
+    return list;
+  }, [incidents.data, scope]);
 
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(sp.toString());
@@ -77,29 +109,42 @@ export default function QueuePage() {
     router.replace(`/officer/queue?${next.toString()}`);
   };
 
+  const scopes = [
+    { id: 'all', label: 'All' },
+    { id: 'mine', label: 'Mine' },
+    { id: 'unassigned', label: 'Unassigned' },
+  ] as const;
+
   return (
-    <div className="space-y-5">
-      {/* Header */}
+    <div className="space-y-5 animate-fadeIn">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-white">Case queue</h1>
           <p className="text-xs text-slate-400 mt-1">
-            {incidents.data?.total ?? 0} case{incidents.data?.total === 1 ? '' : 's'} in scope
-            {overdue ? ' · showing overdue only' : ''}
+            {rows.length} case{rows.length === 1 ? '' : 's'}
+            {incidents.data?.total != null && scope !== 'unassigned'
+              ? ` · ${incidents.data.total} total in query`
+              : ''}
+            {overdue ? ' · overdue only' : ''}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setParam('scope', scope === 'mine' ? 'all' : 'mine')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              scope === 'mine'
-                ? 'bg-yellow-500 text-slate-950'
-                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-            }`}
-          >
-            {scope === 'mine' ? 'Mine' : 'All'}
-          </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex p-1 rounded-xl bg-slate-900 border border-slate-800">
+            {scopes.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setParam('scope', s.id === 'all' ? null : s.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                  scope === s.id
+                    ? 'bg-yellow-500 text-slate-950'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             onClick={() => setParam('overdue', overdue ? null : '1')}
@@ -115,13 +160,12 @@ export default function QueuePage() {
         </div>
       </div>
 
-      {/* Filter bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
           <input
-            value={q}
-            onChange={(e) => setParam('q', e.target.value)}
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
             placeholder="Search ID, vehicle reg, location, description…"
             className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-yellow-500"
           />
@@ -132,7 +176,7 @@ export default function QueuePage() {
           className="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white"
         >
           <option value="">All statuses</option>
-          {Object.keys(STATUS_STYLE).map((s) => (
+          {STATUS_KEYS.map((s) => (
             <option key={s} value={s}>
               {statusLabel(s)}
             </option>
@@ -160,8 +204,9 @@ export default function QueuePage() {
           <option value="Shiselweni">Shiselweni</option>
           <option value="Lubombo">Lubombo</option>
         </select>
-        {(q || status || severity || region || overdue) && (
+        {(q || status || severity || region || overdue || scope !== 'all') && (
           <button
+            type="button"
             onClick={() => router.replace('/officer/queue')}
             className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-yellow-400 px-2"
           >
@@ -170,7 +215,6 @@ export default function QueuePage() {
         )}
       </div>
 
-      {/* List */}
       {incidents.isLoading ? (
         <div className="flex items-center justify-center py-20 text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -180,18 +224,33 @@ export default function QueuePage() {
         <div className="bg-slate-900 border border-red-500/40 rounded-2xl p-6 text-center text-red-300 text-sm">
           {incidents.error.message}
         </div>
-      ) : (incidents.data?.incidents ?? []).length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center text-slate-500 text-sm">
-          <SlidersHorizontal className="w-8 h-8 mx-auto mb-2 opacity-50" />
-          No cases match the current filters.
+      ) : rows.length === 0 ? (
+        <div className="bg-slate-900 border border-dashed border-slate-700 rounded-2xl p-12 text-center space-y-3">
+          <Inbox className="w-10 h-10 mx-auto text-slate-600" />
+          <p className="text-sm font-bold text-slate-300">No cases match these filters</p>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Try clearing filters, switching scope, or checking overdue cases.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.replace('/officer/queue')}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 hover:underline"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Reset filters
+          </button>
         </div>
       ) : (
         <>
-          <QueueKeyboardNav incidents={incidents.data!.incidents} />
+          <QueueKeyboardNav incidents={rows} />
           <div className="space-y-2">
-            {incidents.data!.incidents.map((inc) => (
+            {rows.map((inc) => (
               <div key={inc.id} data-kbd-row>
-                <CaseRow incident={inc} currentUserId={me.data?.user.id} agencyCode={me.data?.user.agencyCode} />
+                <CaseRow
+                  incident={inc}
+                  currentUserId={me.data?.user.id}
+                  agencyCode={me.data?.user.agencyCode}
+                />
               </div>
             ))}
           </div>
@@ -235,11 +294,7 @@ function CaseRow({
           reason: 'Acknowledged from queue',
         });
       }
-      const next: IncidentStatus =
-        incident.status === 'submitted' || incident.status === 'triaged'
-          ? 'in_progress'
-          : 'in_progress';
-      await transition.mutateAsync({ to: next, note: 'Acknowledged from queue' });
+      await transition.mutateAsync({ to: 'in_progress', note: 'Acknowledged from queue' });
       toast.success(`Acknowledged ${incident.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not acknowledge');
@@ -263,9 +318,7 @@ function CaseRow({
             >
               {incident.severity}
             </span>
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded ${STATUS_STYLE[incident.status]}`}
-            >
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${statusColor(incident.status)}`}>
               {statusLabel(incident.status)}
             </span>
             {overdue && (
@@ -277,20 +330,22 @@ function CaseRow({
           <div className="text-sm font-bold text-white truncate">
             {incident.category} · {incident.location}
           </div>
-          <div className="text-[11px] text-slate-400 truncate mt-0.5">
-            {incident.description}
-          </div>
+          <div className="text-[11px] text-slate-400 truncate mt-0.5">{incident.description}</div>
         </Link>
         <div className="text-[11px] text-slate-500 shrink-0 text-right space-y-2">
-          <div>{incident.region} · {incident.mode}</div>
           <div>
-            {incident.assignedOfficerName
-              ? `→ ${incident.assignedOfficerName}`
-              : <span className="text-sky-400 font-semibold">Unassigned</span>}
+            {incident.region} · {incident.mode}
           </div>
-          <div className="opacity-70">
-            {new Date(incident.createdAt).toLocaleString()}
+          <div>
+            {incident.assignedOfficerName ? (
+              `→ ${incident.assignedOfficerName}`
+            ) : (
+              <span className="inline-flex items-center gap-1 text-sky-400 font-semibold">
+                <UserPlus className="w-3 h-3" /> Unassigned
+              </span>
+            )}
           </div>
+          <div className="opacity-70">{new Date(incident.createdAt).toLocaleString()}</div>
           {canAcknowledge && (
             <button
               type="button"
@@ -298,11 +353,7 @@ function CaseRow({
               disabled={busy}
               className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold disabled:opacity-50"
             >
-              {busy ? (
-                <Loader2 className="w-3 h-3 animate-spin" />
-              ) : (
-                <CheckCircle2 className="w-3 h-3" />
-              )}
+              {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
               Acknowledge
             </button>
           )}

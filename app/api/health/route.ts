@@ -4,7 +4,7 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '5.1.0';
+const PLATFORM_VERSION = '5.2.0';
 
 export async function GET() {
   const health = getEnvHealth();
@@ -17,8 +17,10 @@ export async function GET() {
     const t0 = Date.now();
     try {
       const supabase = createServiceSupabase();
-      // Lightweight probe — does not expose row data
-      const { error } = await supabase.from('incidents').select('id', { count: 'exact', head: true }).limit(1);
+      const { error } = await supabase
+        .from('incidents')
+        .select('id', { count: 'exact', head: true })
+        .limit(1);
       const latencyMs = Date.now() - t0;
       if (error) {
         db = { ok: false, latencyMs, error: error.message.slice(0, 120) };
@@ -41,7 +43,7 @@ export async function GET() {
       status: overallOk ? 'ok' : 'degraded',
       service: 'bika-platform',
       version: PLATFORM_VERSION,
-      ux: '5.1',
+      ux: '5.2',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),
       checks: {

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
+import { rateLimit, clientIpFromHeaders } from '@/app/lib/rateLimit';
 import type { ApiResponse } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +20,20 @@ export async function POST(
   const requestId = newRequestId();
   const { id: rawId } = await params;
   const id = normalizeReferenceId(rawId);
+
+  const key = `rate:${clientIpFromHeaders(req.headers)}`;
+  const rl = rateLimit(key, 10);
+  if (!rl.allowed) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'RATE_LIMITED',
+      error: 'Too many rating attempts. Please wait and try again.',
+    };
+    return NextResponse.json(body, {
+      status: 429,
+      headers: { 'Retry-After': String(rl.retryAfter ?? 60) },
+    });
+  }
 
   let json: unknown;
   try {
