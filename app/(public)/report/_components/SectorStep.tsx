@@ -14,7 +14,6 @@ export function SectorStep({ onSelect, onTrack }: SectorStepProps) {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      {/* Hero — UX 5.0 */}
       <div className="relative rounded-[1.75rem] p-6 sm:p-12 border border-slate-800/80 shadow-2xl overflow-hidden text-center bg-slate-900">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(234,179,8,0.14),_transparent_55%)] pointer-events-none" />
         <div className="absolute -right-16 -bottom-16 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -48,52 +47,54 @@ export function SectorStep({ onSelect, onTrack }: SectorStepProps) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-          Select a sector
-          <ArrowRight className="w-5 h-5 text-yellow-400" />
-        </h2>
-        <button
-          type="button"
-          onClick={onTrack}
-          className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-yellow-500/40 px-4 py-2.5 rounded-xl text-xs font-bold text-yellow-400 transition-all shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500"
-        >
-          <Search className="w-4 h-4" />
-          Track existing report
-        </button>
-      </div>
+      <div id="sector-picker" className="scroll-mt-24 space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+            Select a sector
+            <ArrowRight className="w-5 h-5 text-yellow-400" />
+          </h2>
+          <button
+            type="button"
+            onClick={onTrack}
+            className="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 hover:border-yellow-500/40 px-4 py-2.5 rounded-xl text-xs font-bold text-yellow-400 transition-all shadow-lg active:scale-95 touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500"
+          >
+            <Search className="w-4 h-4" />
+            Track existing report
+          </button>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6" role="list">
-        <SectorCard
-          mode="Road Transport"
-          title="Transport Sector"
-          emoji="🚌"
-          badge="Public & Freight Transport"
-          badgeIcon={Bus}
-          badgeClass="bg-yellow-500 text-slate-950"
-          accentColor="hover:border-yellow-500/80 hover:shadow-yellow-500/10"
-          titleHover="group-hover:text-yellow-400"
-          arrowBg="bg-yellow-500/20 text-yellow-400 group-hover:bg-yellow-500 group-hover:text-slate-950"
-          imageUrl="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80"
-          description="Report speeding kombis, overloading, fare overcharging, rank congestion, unsafe vehicles, driver conduct — or commend outstanding drivers."
-          tags={['Kombis & Buses', 'Taxis & Hired', 'Bus Ranks & Stops', 'Freight Trucks']}
-          onSelect={() => onSelect('Road Transport')}
-        />
-        <SectorCard
-          mode="Restaurant/Food"
-          title="Trade & Outlets Sector"
-          emoji="🍽️"
-          badge="Food Trade & Services"
-          badgeIcon={Utensils}
-          badgeClass="bg-emerald-500 text-slate-950"
-          accentColor="hover:border-emerald-500/80 hover:shadow-emerald-500/10"
-          titleHover="group-hover:text-emerald-400"
-          arrowBg="bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950"
-          imageUrl="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80"
-          description="Report food safety issues, unhygienic kitchens, expired produce, price gouging, market hygiene — or compliment clean establishments."
-          tags={['Restaurants', 'Food Stalls', 'Bakeries', 'Trade Hubs']}
-          onSelect={() => onSelect('Restaurant/Food')}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6" role="list">
+          <SectorCard
+            mode="Road Transport"
+            title="Transport Sector"
+            emoji="🚌"
+            badge="Public & Freight Transport"
+            badgeIcon={Bus}
+            badgeClass="bg-yellow-500 text-slate-950"
+            accentColor="hover:border-yellow-500/80 hover:shadow-yellow-500/10 active:border-yellow-500"
+            titleHover="group-hover:text-yellow-400"
+            arrowBg="bg-yellow-500/20 text-yellow-400 group-hover:bg-yellow-500 group-hover:text-slate-950"
+            imageUrl="https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80"
+            description="Report speeding kombis, overloading, fare overcharging, rank congestion, unsafe vehicles, driver conduct — or commend outstanding drivers."
+            tags={['Kombis & Buses', 'Taxis & Hired', 'Bus Ranks & Stops', 'Freight Trucks']}
+            onSelect={() => onSelect('Road Transport')}
+          />
+          <SectorCard
+            mode="Restaurant/Food"
+            title="Trade & Outlets Sector"
+            emoji="🍽️"
+            badge="Food Trade & Services"
+            badgeIcon={Utensils}
+            badgeClass="bg-emerald-500 text-slate-950"
+            accentColor="hover:border-emerald-500/80 hover:shadow-emerald-500/10 active:border-emerald-500"
+            titleHover="group-hover:text-emerald-400"
+            arrowBg="bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950"
+            imageUrl="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80"
+            description="Report food safety issues, unhygienic kitchens, expired produce, price gouging, market hygiene — or compliment clean establishments."
+            tags={['Restaurants', 'Food Stalls', 'Bakeries', 'Trade Hubs']}
+            onSelect={() => onSelect('Restaurant/Food')}
+          />
+        </div>
       </div>
 
       <div className="pt-2 pb-2">
@@ -101,7 +102,7 @@ export function SectorStep({ onSelect, onTrack }: SectorStepProps) {
           type="button"
           onClick={() => setShowGuide(!showGuide)}
           aria-expanded={showGuide}
-          className="w-full bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-yellow-500/50 rounded-2xl p-4 sm:p-5 flex items-center justify-between text-left transition-all shadow-xl group focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500"
+          className="w-full bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-yellow-500/50 rounded-2xl p-4 sm:p-5 flex items-center justify-between text-left transition-all shadow-xl group active:scale-[0.99] touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500"
         >
           <div className="flex items-center space-x-3 sm:space-x-4">
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
@@ -189,13 +190,14 @@ function SectorCard({
       role="listitem"
       onClick={onSelect}
       aria-label={`Select ${title} sector`}
-      className={`group relative rounded-[1.5rem] overflow-hidden border-2 border-slate-800 ${accentColor} cursor-pointer shadow-2xl transition-all duration-300 hover:scale-[1.015] hover:shadow-2xl bg-slate-900 text-left w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500`}
+      className={`group relative rounded-[1.5rem] overflow-hidden border-2 border-slate-800 ${accentColor} cursor-pointer shadow-2xl transition-all duration-200 hover:scale-[1.015] active:scale-[0.98] hover:shadow-2xl bg-slate-900 text-left w-full touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500`}
     >
-      <div className="h-52 sm:h-56 relative overflow-hidden">
+      <div className="h-52 sm:h-56 relative overflow-hidden pointer-events-none">
         <img
           src={imageUrl}
           alt=""
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 brightness-75"
+          draggable={false}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/50 to-transparent" />
         <div
@@ -205,7 +207,7 @@ function SectorCard({
           <span>{badge}</span>
         </div>
       </div>
-      <div className="p-6 space-y-3">
+      <div className="p-6 space-y-3 pointer-events-none">
         <div className="flex items-center justify-between gap-2">
           <h3 className={`text-xl sm:text-2xl font-black text-white ${titleHover} transition-colors`}>
             {emoji} {title}

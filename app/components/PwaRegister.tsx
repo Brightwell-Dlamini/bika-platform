@@ -6,8 +6,8 @@ const DISMISS_KEY = 'bika_pwa_install_dismissed_until';
 const DISMISS_DAYS = 14;
 
 /**
- * Registers the service worker and surfaces a minimal install prompt when available.
- * "Later" is remembered for two weeks so the banner does not interrupt every visit.
+ * Registers the service worker and surfaces a minimal install prompt.
+ * Positioned ABOVE the mobile bottom nav so it never steals taps from Report / Track.
  */
 export function PwaRegister() {
   const [deferred, setDeferred] = useState<any>(null);
@@ -19,7 +19,6 @@ export function PwaRegister() {
     navigator.serviceWorker
       .register('/sw.js', { scope: '/' })
       .then((reg) => {
-        // Force waiting worker to activate so v5 replaces stale v3/v4 shells
         if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
         reg.update().catch(() => {});
       })
@@ -79,50 +78,62 @@ export function PwaRegister() {
       aria-label="Install BIKA"
       style={{
         position: 'fixed',
-        bottom: 16,
-        left: 16,
-        right: 16,
-        zIndex: 40,
+        /* Clear the mobile tab bar (~4.5rem) + safe area so Report FAB stays tappable */
+        bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
+        left: 12,
+        right: 12,
+        zIndex: 30,
         maxWidth: 420,
         margin: '0 auto',
         background: '#0f172a',
         color: '#f8fafc',
         border: '1px solid #334155',
         borderRadius: 16,
-        padding: '12px 16px',
+        padding: '12px 14px',
         boxShadow: '0 10px 40px rgba(0,0,0,0.45)',
         display: 'flex',
         alignItems: 'center',
-        gap: 12,
+        gap: 10,
         fontFamily: 'system-ui, sans-serif',
         fontSize: 13,
         pointerEvents: 'auto',
       }}
     >
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, marginBottom: 2 }}>Install BIKA</div>
-        <div style={{ color: '#94a3b8' }}>
-          Add to your home screen for one-tap reporting.
+        <div style={{ color: '#94a3b8', fontSize: 12 }}>
+          Add to home screen for one-tap reporting.
         </div>
       </div>
-      <button type="button" onClick={dismiss} style={{
-        background: 'transparent',
-        border: 'none',
-        color: '#94a3b8',
-        cursor: 'pointer',
-        padding: 8,
-      }}>
+      <button
+        type="button"
+        onClick={dismiss}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#94a3b8',
+          cursor: 'pointer',
+          padding: '10px 8px',
+          minHeight: 44,
+          fontWeight: 600,
+        }}
+      >
         Later
       </button>
-      <button type="button" onClick={onInstall} style={{
-        background: '#eab308',
-        color: '#020617',
-        border: 'none',
-        borderRadius: 10,
-        fontWeight: 800,
-        padding: '8px 14px',
-        cursor: 'pointer',
-      }}>
+      <button
+        type="button"
+        onClick={onInstall}
+        style={{
+          background: '#eab308',
+          color: '#020617',
+          border: 'none',
+          borderRadius: 10,
+          fontWeight: 800,
+          padding: '10px 14px',
+          minHeight: 44,
+          cursor: 'pointer',
+        }}
+      >
         Install
       </button>
     </div>

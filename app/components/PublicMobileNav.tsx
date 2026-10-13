@@ -2,12 +2,24 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Search, LogIn, WifiOff, Plus } from 'lucide-react';
 import { getMyReports } from '@/app/lib/myReports';
 
+function focusSectorPicker() {
+  if (typeof window === 'undefined') return;
+  const el = document.getElementById('sector-picker');
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+  window.dispatchEvent(new Event('bika-report-focus'));
+}
+
 export function PublicMobileNav() {
   const pathname = usePathname() ?? '';
+  const router = useRouter();
   const [reportCount, setReportCount] = useState(0);
   const [online, setOnline] = useState(true);
 
@@ -39,25 +51,34 @@ export function PublicMobileNav() {
   const trackActive = pathname.startsWith('/track') || pathname.startsWith('/r/');
   const loginActive = pathname.startsWith('/login');
 
+  const onReportClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    // Same URL client nav is a silent no-op — always handle explicitly
+    e.preventDefault();
+    if (pathname.startsWith('/report')) {
+      focusSectorPicker();
+      return;
+    }
+    router.push('/report');
+  };
+
   return (
-    <div className="md:hidden fixed bottom-0 inset-x-0 z-50">
+    <div className="md:hidden fixed bottom-0 inset-x-0 z-50 pointer-events-none">
       {!online && (
-        <div className="bg-amber-600/95 text-amber-950 text-[10px] font-bold px-3 py-1 flex items-center justify-center gap-1.5 border-t border-amber-500">
+        <div className="pointer-events-auto bg-amber-600/95 text-amber-950 text-[10px] font-bold px-3 py-1 flex items-center justify-center gap-1.5 border-t border-amber-500">
           <WifiOff className="w-3 h-3" />
           Offline mode
         </div>
       )}
 
       <nav
-        className="relative border-t border-slate-800/90 bg-slate-950/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
+        className="pointer-events-auto relative border-t border-slate-800/90 bg-slate-950/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
         aria-label="Primary"
       >
         <div className="grid grid-cols-3 h-[4.25rem] max-w-lg mx-auto items-end">
-          {/* Track */}
           <Link
             href="/track"
             aria-current={trackActive ? 'page' : undefined}
-            className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[48px] pb-2 transition-colors ${
+            className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[48px] pb-2 transition-colors touch-manipulation ${
               trackActive ? 'text-yellow-400' : 'text-slate-500 active:text-slate-300'
             }`}
           >
@@ -84,19 +105,19 @@ export function PublicMobileNav() {
             <span>Track</span>
           </Link>
 
-          {/* Center raised Report FAB */}
-          <div className="relative flex flex-col items-center justify-end pb-1.5">
-            <Link
+          <div className="relative flex flex-col items-center justify-end pb-1.5 pointer-events-auto">
+            <a
               href="/report"
+              onClick={onReportClick}
               aria-current={reportActive ? 'page' : undefined}
               aria-label="File a report"
-              className={`-mt-7 flex flex-col items-center gap-1 group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500`}
+              className="-mt-7 flex flex-col items-center gap-1 group focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500 touch-manipulation"
             >
               <span
                 className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl transition-transform active:scale-95 ${
                   reportActive
                     ? 'bg-yellow-400 text-slate-950 shadow-yellow-500/40 ring-4 ring-yellow-500/20'
-                    : 'bg-yellow-500 text-slate-950 shadow-yellow-500/30 group-hover:brightness-110'
+                    : 'bg-yellow-500 text-slate-950 shadow-yellow-500/30'
                 }`}
               >
                 {reportActive ? (
@@ -112,14 +133,13 @@ export function PublicMobileNav() {
               >
                 Report
               </span>
-            </Link>
+            </a>
           </div>
 
-          {/* Official */}
           <Link
             href="/login"
             aria-current={loginActive ? 'page' : undefined}
-            className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[48px] pb-2 transition-colors ${
+            className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[48px] pb-2 transition-colors touch-manipulation ${
               loginActive ? 'text-yellow-400' : 'text-slate-500 active:text-slate-300'
             }`}
           >
