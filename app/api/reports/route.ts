@@ -22,10 +22,6 @@ import type { ApiResponse, Incident } from '@/app/types';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// -----------------------------------------------------------------------------
-// POST — citizen submits a report
-// -----------------------------------------------------------------------------
-
 export async function POST(req: NextRequest) {
   const requestId = newRequestId();
   const key = clientIpFromHeaders(req.headers);
@@ -216,10 +212,6 @@ export async function POST(req: NextRequest) {
   });
 }
 
-// -----------------------------------------------------------------------------
-// GET — scoped incident list
-// -----------------------------------------------------------------------------
-
 const listQuerySchema = z.object({
   region: z.string().optional(),
   mode: z.string().optional(),
@@ -229,6 +221,7 @@ const listQuerySchema = z.object({
   assignedTo: z.string().optional(),
   search: z.string().max(200).optional(),
   onlyOverdue: z.enum(['true', 'false']).optional(),
+  onlyUnassigned: z.enum(['true', 'false']).optional(),
   limit: z.coerce.number().int().min(1).max(500).default(100),
 });
 
@@ -278,6 +271,9 @@ export async function GET(req: NextRequest) {
   if (query.severity) q = q.eq('severity', query.severity);
   if (query.agencyCode) q = q.eq('assigned_agency_code', query.agencyCode);
   if (query.assignedTo) q = q.eq('assigned_officer_id', query.assignedTo);
+  if (query.onlyUnassigned === 'true') {
+    q = q.is('assigned_officer_id', null);
+  }
   if (query.onlyOverdue === 'true') {
     q = q
       .lt('sla_due_at', new Date().toISOString())
@@ -290,7 +286,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  if (!query.region && !query.agencyCode && !query.assignedTo) {
+  if (!query.region && !query.agencyCode && !query.assignedTo && query.onlyUnassigned !== 'true') {
     if (isOfficer(caller.role) && !isSuperAdmin(caller.role) && !isAdmin(caller.role)) {
       const region = caller.region !== 'Nationwide' ? caller.region : null;
       const agency = caller.agencyCode;
