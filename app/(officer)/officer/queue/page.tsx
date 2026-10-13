@@ -16,10 +16,7 @@ import {
 import { toast } from 'sonner';
 import { useIncidents } from '@/app/lib/api/hooks/useIncidents';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
-import {
-  useTransitionIncident,
-  useAssignIncident,
-} from '@/app/lib/api/mutations/useIncidentActions';
+import { useAcknowledgeIncident } from '@/app/lib/api/mutations/useIncidentActions';
 import { statusLabel, statusColor } from '@/app/lib/statusLabels';
 import type { Incident, IncidentStatus, Severity } from '@/app/types';
 import { QueueKeyboardNav } from './_components/QueueKeyboardNav';
@@ -236,11 +233,7 @@ export default function QueuePage() {
           <div className="space-y-2">
             {rows.map((inc) => (
               <div key={inc.id} data-kbd-row>
-                <CaseRow
-                  incident={inc}
-                  currentUserId={me.data?.user.id}
-                  agencyCode={me.data?.user.agencyCode}
-                />
+                <CaseRow incident={inc} currentUserId={me.data?.user.id} />
               </div>
             ))}
           </div>
@@ -253,11 +246,9 @@ export default function QueuePage() {
 function CaseRow({
   incident,
   currentUserId,
-  agencyCode,
 }: {
   incident: Incident;
   currentUserId?: string;
-  agencyCode?: string | null;
 }) {
   const overdue =
     incident.slaDueAt &&
@@ -266,32 +257,19 @@ function CaseRow({
 
   const canAcknowledge =
     Boolean(currentUserId) &&
-    ['submitted', 'triaged', 'assigned'].includes(incident.status);
+    ['submitted', 'triaged', 'assigned'].includes(incident.status) &&
+    (!incident.assignedOfficerId || incident.assignedOfficerId === currentUserId);
 
-  const transition = useTransitionIncident(incident.id);
-  const assign = useAssignIncident(incident.id);
+  const acknowledge = useAcknowledgeIncident(incident.id);
 
-  const handleAcknowledge = async (e: React.MouseEvent) => {
+  const handleAcknowledge = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!currentUserId) return;
-
-    try {
-      if (!incident.assignedOfficerId) {
-        await assign.mutateAsync({
-          officerId: currentUserId,
-          agencyCode: agencyCode ?? 'BIKA',
-          reason: 'Acknowledged from queue',
-        });
-      }
-      await transition.mutateAsync({ to: 'in_progress', note: 'Acknowledged from queue' });
-      toast.success(`Acknowledged ${incident.id}`);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not acknowledge');
-    }
+    acknowledge.mutate(undefined, {
+      onSuccess: () => toast.success(`Acknowledged ${incident.id}`),
+      onError: (err) => toast.error(err.message || 'Could not acknowledge'),
+    });
   };
-
-  const busy = transition.isPending || assign.isPending;
 
   return (
     <div
@@ -340,10 +318,14 @@ function CaseRow({
             <button
               type="button"
               onClick={handleAcknowledge}
-              disabled={busy}
+              disabled={acknowledge.isPending}
               className="inline-flex items-center gap-1 mt-1 px-2.5 py-1 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-[10px] font-bold disabled:opacity-50"
             >
-              {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle2 className="w-3 h-3" />}
+              {acknowledge.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3 h-3" />
+              )}
               Acknowledge
             </button>
           )}
