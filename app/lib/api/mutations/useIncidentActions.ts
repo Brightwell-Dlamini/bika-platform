@@ -5,22 +5,15 @@ import { apiFetch } from '@/app/lib/api/fetcher';
 import { qk } from '@/app/lib/api/queryKeys';
 import type { Incident, IncidentEvent, IncidentStatus } from '@/app/types';
 
-// -----------------------------------------------------------------------------
-// Shared invalidation
-// -----------------------------------------------------------------------------
-
 function useInvalidateIncident(id: string) {
   const qc = useQueryClient();
   return () => {
     qc.invalidateQueries({ queryKey: qk.incidents.detail(id) });
     qc.invalidateQueries({ queryKey: qk.incidents.lists() });
     qc.invalidateQueries({ queryKey: qk.incidents.myReports() });
+    qc.invalidateQueries({ queryKey: qk.users.me() });
   };
 }
-
-// -----------------------------------------------------------------------------
-// Transition
-// -----------------------------------------------------------------------------
 
 export function useTransitionIncident(id: string) {
   const invalidate = useInvalidateIncident(id);
@@ -33,10 +26,6 @@ export function useTransitionIncident(id: string) {
     onSuccess: invalidate,
   });
 }
-
-// -----------------------------------------------------------------------------
-// Assign
-// -----------------------------------------------------------------------------
 
 export function useAssignIncident(id: string) {
   const invalidate = useInvalidateIncident(id);
@@ -53,10 +42,6 @@ export function useAssignIncident(id: string) {
     onSuccess: invalidate,
   });
 }
-
-// -----------------------------------------------------------------------------
-// Add note
-// -----------------------------------------------------------------------------
 
 export function useAddNote(id: string) {
   const invalidate = useInvalidateIncident(id);

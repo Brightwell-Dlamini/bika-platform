@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Flame, UserCheck, Loader2, ChevronRight } from 'lucide-react';
+import { Flame, UserCheck, Loader2, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Incident, IncidentStatus, User } from '@/app/types';
 import { useTransitionIncident, useAssignIncident } from '@/app/lib/api/mutations/useIncidentActions';
 import { canRunWork } from '@/app/lib/rbac';
+import { statusLabel } from '@/app/lib/statusLabels';
 import { AssignDialog } from './AssignDialog';
 
 const NEXT_HINTS: Partial<Record<IncidentStatus, IncidentStatus[]>> = {
@@ -34,12 +35,17 @@ export function CaseActions({
   const suggestions = NEXT_HINTS[incident.status] ?? [];
   const assignedToMe = incident.assignedOfficerId === currentUser.id;
   const canReassign = canRunWork(currentUser.role);
+  const canAcknowledge =
+    ['submitted', 'triaged', 'assigned'].includes(incident.status) &&
+    (!incident.assignedOfficerId || assignedToMe);
+
+  const busy = transition.isPending || assign.isPending;
 
   const handleTransition = (to: IncidentStatus) => {
     transition.mutate(
       { to },
       {
-        onSuccess: () => toast.success(`Status updated to ${to}.`),
+        onSuccess: () => toast.success(`Moved to ${statusLabel(to)}.`),
         onError: (err) => toast.error(err.message),
       }
     );
@@ -57,6 +63,22 @@ export function CaseActions({
         onError: (err) => toast.error(err.message),
       }
     );
+  };
+
+  const handleAcknowledge = async () => {
+    try {
+      if (!incident.assignedOfficerId) {
+        await assign.mutateAsync({
+          officerId: currentUser.id,
+          agencyCode: currentUser.agencyCode ?? 'BIKA',
+          reason: 'Acknowledged from case view',
+        });
+      }
+      await transition.mutateAsync({ to: 'in_progress', note: 'Acknowledged — working the case' });
+      toast.success('Case acknowledged and in progress.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not acknowledge');
+    }
   };
 
   const handleEscalate = () => {
@@ -77,49 +99,60 @@ export function CaseActions({
     );
   };
 
-  const busy = transition.isPending || assign.isPending;
-
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-extrabold text-white">Workflow actions</h3>
-        {!incident.assignedOfficerId && (
-          <button
-            onClick={handleClaim}
-            disabled={busy}
-            className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
-          >
-            <UserCheck className="w-3.5 h-3.5" />
-            {assign.isPending ? 'Claiming…' : 'Claim case'}
-          </button>
-        )}
-        {canReassign && (
-          <button
-            onClick={() => setShowAssign(true)}
-            disabled={busy}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 disabled:opacity-50"
-          >
-            {assignedToMe ? 'Reassign' : 'Assign to officer'}
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canAcknowledge && (
+            <button
+              type="button"
+              onClick={handleAcknowledge}
+              disabled={busy}
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              Acknowledge
+            </button>
+          )}
+          {!incident.assignedOfficerId && (
+            <button
+              type="button"
+              onClick={handleClaim}
+              disabled={busy}
+              className="flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              {assign.isPending ? 'Claiming…' : 'Claim case'}
+            </button>
+          )}
+          {canReassign && (
+            <button
+              type="button"
+              onClick={() => setShowAssign(true)}
+              disabled={busy}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-yellow-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-700 disabled:opacity-50"
+            >
+              {assignedToMe ? 'Reassign' : 'Assign to officer'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Next status suggestions */}
       {suggestions.length > 0 && (
         <div>
-          <div className="text-[10px] text-slate-500 uppercase font-bold mb-2">
-            Advance to
-          </div>
+          <div className="text-[10px] text-slate-500 uppercase font-bold mb-2">Advance to</div>
           <div className="flex flex-wrap gap-2">
             {suggestions.map((s) => (
               <button
                 key={s}
+                type="button"
                 onClick={() => handleTransition(s)}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-yellow-500 hover:text-slate-950 text-slate-200 font-bold text-xs px-3 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 bg-slate-800 hover:bg-yellow-500 hover:text-slate-950 text-slate-200 font-bold text-xs px-3 py-2 rounded-lg border border-slate-700 transition-colors disabled:opacity-50 touch-manipulation"
               >
                 {transition.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
-                <span>{s}</span>
+                <span>{statusLabel(s)}</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             ))}
@@ -127,11 +160,11 @@ export function CaseActions({
         </div>
       )}
 
-      {/* Escalate */}
       {!['resolved', 'closed', 'rejected'].includes(incident.status) && (
         <div className="border-t border-slate-800 pt-4">
           {!showEscalate ? (
             <button
+              type="button"
               onClick={() => setShowEscalate(true)}
               className="flex items-center gap-1.5 text-rose-400 hover:text-rose-300 font-bold text-xs"
             >
@@ -149,6 +182,7 @@ export function CaseActions({
               />
               <div className="flex justify-end gap-2">
                 <button
+                  type="button"
                   onClick={() => {
                     setShowEscalate(false);
                     setEscalateReason('');
@@ -158,6 +192,8 @@ export function CaseActions({
                   Cancel
                 </button>
                 <button
+                  type="button"
+bytes
                   onClick={handleEscalate}
                   disabled={transition.isPending}
                   className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold disabled:opacity-50"
