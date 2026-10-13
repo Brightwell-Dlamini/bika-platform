@@ -1,10 +1,5 @@
 /**
  * BIKA v2 — TanStack Query key factory.
- *
- * Rules:
- * - Every query has a key from here. Never write `['incidents']` inline.
- * - Keys are hierarchical: invalidating `qk.incidents.all` invalidates everything.
- * - Filters are part of the key so switching filter = new query automatically.
  */
 
 import type { IncidentStatus, Severity, Region, Mode } from '@/app/types';
@@ -18,13 +13,11 @@ export interface IncidentFilters {
   assignedTo?: string;
   search?: string;
   onlyOverdue?: boolean;
+  onlyUnassigned?: boolean;
   limit?: number;
 }
 
 export const qk = {
-  // ---------------------------------------------------------------------------
-  // Incidents
-  // ---------------------------------------------------------------------------
   incidents: {
     all: ['incidents'] as const,
     lists: () => [...qk.incidents.all, 'list'] as const,
@@ -35,9 +28,6 @@ export const qk = {
     myReports: () => [...qk.incidents.all, 'my-reports'] as const,
   },
 
-  // ---------------------------------------------------------------------------
-  // Reference data (long cache, rarely invalidated)
-  // ---------------------------------------------------------------------------
   agencies: {
     all: ['agencies'] as const,
     list: () => [...qk.agencies.all, 'list'] as const,
@@ -56,9 +46,6 @@ export const qk = {
     detail: () => [...qk.config.all, 'default'] as const,
   },
 
-  // ---------------------------------------------------------------------------
-  // Directory data
-  // ---------------------------------------------------------------------------
   users: {
     all: ['users'] as const,
     lists: () => [...qk.users.all, 'list'] as const,
@@ -84,9 +71,6 @@ export const qk = {
     detail: (id: string) => [...qk.establishments.all, id] as const,
   },
 
-  // ---------------------------------------------------------------------------
-  // Analytics
-  // ---------------------------------------------------------------------------
   analytics: {
     all: ['analytics'] as const,
     kpis: (range: string) => [...qk.analytics.all, 'kpis', range] as const,
@@ -95,9 +79,6 @@ export const qk = {
     slaBreach: () => [...qk.analytics.all, 'sla-breach'] as const,
   },
 
-  // ---------------------------------------------------------------------------
-  // Audit
-  // ---------------------------------------------------------------------------
   audit: {
     all: ['audit'] as const,
     list: (filters?: { userId?: string; targetId?: string; limit?: number }) =>

@@ -1,8 +1,7 @@
-/* BIKA Platform – Service Worker v5
+/* BIKA Platform – Service Worker v5.3
  * Network-first for documents and Next.js bundles so deploys are not stuck on a dead cached shell.
- * Cache only static assets; never trap the whole UI behind an old HTML/JS snapshot.
  */
-const CACHE_NAME = 'bika-v5';
+const CACHE_NAME = 'bika-v53';
 const PRECACHE_URLS = ['/manifest.json', '/Bika.png'];
 
 self.addEventListener('install', (event) => {
@@ -43,7 +42,6 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
 
-  // APIs and Supabase: network only
   if (url.pathname.startsWith('/api') || url.hostname.includes('supabase')) {
     event.respondWith(
       fetch(event.request).catch(
@@ -57,19 +55,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // HTML navigations: always prefer network so new deploys take effect
   if (isNavigation(event.request)) {
     event.respondWith(
       fetch(event.request)
-        .then((response) => {
-          return response;
-        })
+        .then((response) => response)
         .catch(() => caches.match('/') || caches.match(event.request))
     );
     return;
   }
 
-  // Next.js JS/CSS: network first, then cache
   if (isNextAsset(url)) {
     event.respondWith(
       fetch(event.request)
@@ -85,7 +79,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Images and other static: cache-first is fine
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
