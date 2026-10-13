@@ -1,16 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/server';
-import { canRunSystem } from '@/app/lib/rbac';
+import { canRunSystem, isSuperAdmin } from '@/app/lib/rbac';
 import { zCreateUser } from '@/app/lib/schemas';
 import { logger, newRequestId } from '@/app/lib/logger';
 import type { ApiResponse, User } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
-
-// -----------------------------------------------------------------------------
-// GET — list users (any officer can list, for assignment dropdowns)
-// -----------------------------------------------------------------------------
 
 export async function GET(req: NextRequest) {
   const caller = await getCallerProfile();
@@ -32,11 +27,22 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceSupabase();
   let q = supabase.from('profiles').select('*').order('name');
 
-  if (agencyCode) q = q.eq('agency_code', agencyCode);
+  // Non-super-admins only see their own agency roster (assignment safety).
+  if (!isSuperAdmin(caller.role)) {
+    if (caller.agencyCode) {
+      q = q.eq('agency_code', caller.agencyCode);
+    }
+  } else if (agencyCode) {
+    q = q.eq('agency_code', agencyCode);
+  }
+
   if (role) q = q.eq('role', role);
   if (region) q = q.eq('region', region);
   if (activeParam === 'true') q = q.eq('active', true);
   if (activeParam === 'false') q = q.eq('active', false);
+
+  // Never return pure public citizen profiles in officer directory
+  q = q.neq('role', 'public');
 
   const { data, error } = await q;
   if (error) {
@@ -52,10 +58,6 @@ export async function GET(req: NextRequest) {
   const body: ApiResponse<{ users: User[] }> = { ok: true, data: { users } };
   return NextResponse.json(body);
 }
-
-// -----------------------------------------------------------------------------
-// POST — create user (Super Admin only)
-// -----------------------------------------------------------------------------
 
 export async function POST(req: NextRequest) {
   const requestId = newRequestId();
@@ -106,10 +108,8 @@ export async function POST(req: NextRequest) {
 
   const admin = createServiceSupabase();
 
-  // 1. Create the Auth user first
   let authUserId: string;
 
-  // Check if auth user already exists
   const { data: existing } = await admin
     .from('profiles')
     .select('auth_user_id')
@@ -117,7 +117,6 @@ export async function POST(req: NextRequest) {
     .maybeSingle();
 
   if (existing?.auth_user_id) {
-    // Auth user exists — update password + metadata
     const { error: updErr } = await admin.auth.admin.updateUserById(existing.auth_user_id, {
       password: input.password,
       email_confirm: true,
@@ -138,7 +137,6 @@ export async function POST(req: NextRequest) {
     }
     authUserId = existing.auth_user_id;
   } else {
-    // Create fresh auth user
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email: normalizedEmail,
       password: input.password,
@@ -161,7 +159,6 @@ export async function POST(req: NextRequest) {
     authUserId = created.user.id;
   }
 
-  // 2. Upsert the profile, linked to the auth user
   const { data: profile, error: profileErr } = await admin
     .from('profiles')
     .upsert({
@@ -196,7 +193,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(body, { status: 500 });
   }
 
-  // 3. Audit
   await admin.from('audit_logs').insert({
     user_id: caller.id,
     user_name: caller.name,

@@ -4,7 +4,11 @@ import React, { useState } from 'react';
 import { Flame, UserCheck, Loader2, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Incident, IncidentStatus, User } from '@/app/types';
-import { useTransitionIncident, useAssignIncident } from '@/app/lib/api/mutations/useIncidentActions';
+import {
+  useTransitionIncident,
+  useAssignIncident,
+  useAcknowledgeIncident,
+} from '@/app/lib/api/mutations/useIncidentActions';
 import { canRunWork } from '@/app/lib/rbac';
 import { statusLabel } from '@/app/lib/statusLabels';
 import { AssignDialog } from './AssignDialog';
@@ -28,6 +32,7 @@ export function CaseActions({
 }) {
   const transition = useTransitionIncident(incident.id);
   const assign = useAssignIncident(incident.id);
+  const acknowledge = useAcknowledgeIncident(incident.id);
   const [showAssign, setShowAssign] = useState(false);
   const [escalateReason, setEscalateReason] = useState('');
   const [showEscalate, setShowEscalate] = useState(false);
@@ -39,7 +44,7 @@ export function CaseActions({
     ['submitted', 'triaged', 'assigned'].includes(incident.status) &&
     (!incident.assignedOfficerId || assignedToMe);
 
-  const busy = transition.isPending || assign.isPending;
+  const busy = transition.isPending || assign.isPending || acknowledge.isPending;
 
   const handleTransition = (to: IncidentStatus) => {
     transition.mutate(
@@ -65,20 +70,11 @@ export function CaseActions({
     );
   };
 
-  const handleAcknowledge = async () => {
-    try {
-      if (!incident.assignedOfficerId) {
-        await assign.mutateAsync({
-          officerId: currentUser.id,
-          agencyCode: currentUser.agencyCode ?? 'BIKA',
-          reason: 'Acknowledged from case view',
-        });
-      }
-      await transition.mutateAsync({ to: 'in_progress', note: 'Acknowledged — working the case' });
-      toast.success('Case acknowledged and in progress.');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not acknowledge');
-    }
+  const handleAcknowledge = () => {
+    acknowledge.mutate(undefined, {
+      onSuccess: () => toast.success('Case acknowledged and in progress.'),
+      onError: (err) => toast.error(err.message),
+    });
   };
 
   const handleEscalate = () => {
@@ -111,7 +107,11 @@ export function CaseActions({
               disabled={busy}
               className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg disabled:opacity-50"
             >
-              {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              {acknowledge.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              )}
               Acknowledge
             </button>
           )}
