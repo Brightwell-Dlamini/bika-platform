@@ -84,12 +84,29 @@ export function ReviewStep({
         </div>
       </dl>
 
+      {attachments.length > 0 && (
+        <div className="relative space-y-2">
+          <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Evidence preview</p>
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((att) => (
+              <div
+                key={att.id}
+                className="w-16 h-16 rounded-xl overflow-hidden border border-slate-700"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={att.url} alt={att.name} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="relative flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
         <button
           type="button"
           onClick={onEdit}
           disabled={submitting}
-          className="inline-flex items-center justify-center space-x-1.5 px-4 py-3 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition"
+          className="inline-flex items-center justify-center space-x-1.5 px-4 py-3 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition touch-manipulation"
         >
           <Pencil className="w-3.5 h-3.5" />
           <span>Edit details</span>
@@ -98,7 +115,7 @@ export function ReviewStep({
           type="button"
           onClick={onConfirm}
           disabled={submitting}
-          className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-yellow-500 text-slate-950 text-xs font-extrabold hover:brightness-110 disabled:opacity-60 shadow-lg shadow-yellow-500/25 transition"
+          className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-yellow-500 text-slate-950 text-xs font-extrabold hover:brightness-110 disabled:opacity-60 shadow-lg shadow-yellow-500/25 transition touch-manipulation"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           <span>{submitting ? 'Submitting…' : 'Confirm & submit'}</span>

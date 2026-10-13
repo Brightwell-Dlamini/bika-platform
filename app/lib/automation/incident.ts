@@ -6,22 +6,9 @@ import {
   officerAssignment,
   officerCritical,
 } from '@/app/lib/notifications/templates';
+import { mapIncident } from '@/app/lib/mappers/incident';
 import { computeSlaDueAt } from './sla';
-import type { Incident, AgencyCode } from '@/app/types';
-
-/**
- * BIKA v2 — Incident automation.
- *
- * Runs after every create or state change. Idempotent — safe to retry.
- *
- *   1. SLA   — compute sla_due_at if missing (DB trigger may already set it)
- *   2. Route — determine the correct agency from mode + category
- *   3. Assign — pick an on-duty officer in that agency if unassigned and severity warrants
- *   4. Notify — dispatch to configured channels
- *
- * Never throws to the caller when invoked via the reports route try/catch,
- * but logs structured failures for every step.
- */
+import type { AgencyCode } from '@/app/types';
 
 interface AutomationResult {
   slaDueAt: string | null;
@@ -63,10 +50,6 @@ export async function runIncidentAutomation(
 
     const patch: Record<string, unknown> = {};
 
-    // -----------------------------------------------------------------------
-    // 1. SLA (trigger may already have set this on INSERT)
-    // -----------------------------------------------------------------------
-
     if (!incident.sla_due_at) {
       const due = computeSlaDueAt(incident.severity as never, new Date(incident.created_at));
       patch.sla_due_at = due.toISOString();
@@ -75,10 +58,6 @@ export async function runIncidentAutomation(
       result.slaDueAt = incident.sla_due_at;
     }
 
-    // -----------------------------------------------------------------------
-    // 2. Route — determine agency from mode + category
-    // -----------------------------------------------------------------------
-
     const targetAgency = determineAgency(
       incident.mode as string,
       incident.category as string,
@@ -86,14 +65,9 @@ export async function runIncidentAutomation(
     );
     result.agencyCode = targetAgency;
 
-    // Always stamp agency when known and not already set (triage visibility).
     if (targetAgency && !incident.assigned_agency_code) {
       patch.assigned_agency_code = targetAgency;
     }
-
-    // -----------------------------------------------------------------------
-    // 3. Assign — pick an on-duty officer if the case warrants it
-    // -----------------------------------------------------------------------
 
     const severity = String(incident.severity ?? '').toUpperCase();
     const shouldAssign =
@@ -128,6 +102,7 @@ export async function runIncidentAutomation(
             officerName: officer.name,
             agencyCode: targetAgency,
             automated: true,
+            openCasesAtPick: officer.openCases,
           },
         });
         if (eventErr) {
@@ -142,7 +117,7 @@ export async function runIncidentAutomation(
           officer_id: officer.id,
           agency_code: targetAgency,
           assigned_by: null,
-          reason: 'Auto-assigned by BIKA automation',
+          reason: 'Auto-assigned by BIKA automation (load-aware)',
         });
         if (assignHistErr) {
           logger.warn('automation_assignments_row_failed', {
@@ -160,10 +135,6 @@ export async function runIncidentAutomation(
       }
     }
 
-    // -----------------------------------------------------------------------
-    // Apply the patch (if any)
-    // -----------------------------------------------------------------------
-
     if (Object.keys(patch).length > 0) {
       const { error: updateErr } = await supabase
         .from('incidents')
@@ -179,10 +150,6 @@ export async function runIncidentAutomation(
       }
     }
 
-    // -----------------------------------------------------------------------
-    // 4. Notify
-    // -----------------------------------------------------------------------
-
     const { data: enriched } = await supabase
       .from('incidents')
       .select('*')
@@ -190,7 +157,7 @@ export async function runIncidentAutomation(
       .maybeSingle();
 
     if (enriched) {
-      const mapped = mapIncident(enriched);
+      const mapped = mapIncident(enriched as Record<string, unknown>);
 
       if (result.assignedOfficerId && result.assignedOfficerName) {
         const msg = officerAssignment(mapped, result.assignedOfficerName);
@@ -259,10 +226,6 @@ export async function runIncidentAutomation(
   }
 }
 
-// -----------------------------------------------------------------------------
-// Routing
-// -----------------------------------------------------------------------------
-
 function determineAgency(
   mode: string,
   category: string,
@@ -304,21 +267,56 @@ function determineAgency(
   return 'BIKA';
 }
 
-// -----------------------------------------------------------------------------
-// Officer selection
-// -----------------------------------------------------------------------------
-
 interface PickedOfficer {
   id: string;
   name: string;
+  openCases: number;
 }
 
+/**
+ * Prefer on-duty same region, then on-duty Nationwide, then any active.
+ * Within a candidate pool, choose the officer with the fewest open cases.
+ */
 async function pickOfficer(
   supabase: ReturnType<typeof createServiceSupabase>,
   agency: AgencyCode,
   region: string
 ): Promise<PickedOfficer | null> {
-  // Prefer on-duty, same region
+  const candidates = await loadCandidates(supabase, agency, region);
+  if (candidates.length === 0) return null;
+
+  const ids = candidates.map((c) => c.id);
+  const { data: openRows } = await supabase
+    .from('incidents')
+    .select('assigned_officer_id')
+    .in('assigned_officer_id', ids)
+    .not('status', 'in', '(closed,resolved,rejected)');
+
+  const counts = new Map<string, number>();
+  for (const id of ids) counts.set(id, 0);
+  for (const row of openRows ?? []) {
+    const oid = row.assigned_officer_id as string;
+    counts.set(oid, (counts.get(oid) ?? 0) + 1);
+  }
+
+  let best = candidates[0]!;
+  let bestLoad = counts.get(best.id) ?? 0;
+  for (const c of candidates.slice(1)) {
+    const load = counts.get(c.id) ?? 0;
+    if (load < bestLoad) {
+      best = c;
+      bestLoad = load;
+    }
+  }
+
+  return { id: best.id, name: best.name, openCases: bestLoad };
+}
+
+async function loadCandidates(
+  supabase: ReturnType<typeof createServiceSupabase>,
+  agency: AgencyCode,
+  region: string
+): Promise<Array<{ id: string; name: string }>> {
   const sameRegion = await supabase
     .from('profiles')
     .select('id, name')
@@ -326,20 +324,12 @@ async function pickOfficer(
     .eq('active', true)
     .eq('on_duty', true)
     .eq('region', region)
-    .limit(1);
+    .limit(25);
 
-  if (sameRegion.error) {
-    logger.warn('pick_officer_query_failed', {
-      step: 'same_region',
-      agency,
-      region,
-      error: sameRegion.error.message,
-    });
-  } else if (sameRegion.data && sameRegion.data.length > 0) {
-    return { id: sameRegion.data[0].id, name: sameRegion.data[0].name };
+  if (!sameRegion.error && sameRegion.data && sameRegion.data.length > 0) {
+    return sameRegion.data;
   }
 
-  // Fallback: on-duty nationwide
   const nationwide = await supabase
     .from('profiles')
     .select('id, name')
@@ -347,86 +337,22 @@ async function pickOfficer(
     .eq('active', true)
     .eq('on_duty', true)
     .eq('region', 'Nationwide')
-    .limit(1);
+    .limit(25);
 
-  if (nationwide.error) {
-    logger.warn('pick_officer_query_failed', {
-      step: 'nationwide',
-      agency,
-      error: nationwide.error.message,
-    });
-  } else if (nationwide.data && nationwide.data.length > 0) {
-    return { id: nationwide.data[0].id, name: nationwide.data[0].name };
+  if (!nationwide.error && nationwide.data && nationwide.data.length > 0) {
+    return nationwide.data;
   }
 
-  // Last resort: any active officer in the agency
   const anyActive = await supabase
     .from('profiles')
     .select('id, name')
     .eq('agency_code', agency)
     .eq('active', true)
-    .limit(1);
+    .limit(25);
 
-  if (anyActive.error) {
-    logger.warn('pick_officer_query_failed', {
-      step: 'any_active',
-      agency,
-      error: anyActive.error.message,
-    });
-  } else if (anyActive.data && anyActive.data.length > 0) {
-    return { id: anyActive.data[0].id, name: anyActive.data[0].name };
+  if (!anyActive.error && anyActive.data && anyActive.data.length > 0) {
+    return anyActive.data;
   }
 
-  return null;
-}
-
-// -----------------------------------------------------------------------------
-// Row mapper (mirrors reports route)
-// -----------------------------------------------------------------------------
-
-function mapIncident(row: Record<string, unknown>): Incident {
-  return {
-    id: row.id as string,
-    reportType: row.report_type as Incident['reportType'],
-    category: row.category as string,
-    mode: row.mode as Incident['mode'],
-    region: row.region as Incident['region'],
-    location: row.location as string,
-    description: row.description as string,
-    severity: row.severity as Incident['severity'],
-    status: row.status as Incident['status'],
-    reporterName: (row.reporter_name as string | null) ?? null,
-    reporterPhone: (row.reporter_phone as string | null) ?? null,
-    reporterEmail: (row.reporter_email as string | null) ?? null,
-    isAnonymous: Boolean(row.is_anonymous),
-    vehicleRegistration: (row.vehicle_registration as string | null) ?? null,
-    fleetId: (row.fleet_id as string | null) ?? null,
-    establishmentId: (row.establishment_id as string | null) ?? null,
-    operatorName: (row.operator_name as string | null) ?? null,
-    driverName: (row.driver_name as string | null) ?? null,
-    establishmentName: (row.establishment_name as string | null) ?? null,
-    assignedOfficerId: (row.assigned_officer_id as string | null) ?? null,
-    assignedOfficerName: (row.assigned_officer_name as string | null) ?? null,
-    assignedAgencyCode: (row.assigned_agency_code as Incident['assignedAgencyCode']) ?? null,
-    assignedAt: (row.assigned_at as string | null) ?? null,
-    coordinates: (row.coordinates as Incident['coordinates']) ?? null,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    triagedAt: (row.triaged_at as string | null) ?? null,
-    firstRespondedAt: (row.first_responded_at as string | null) ?? null,
-    resolvedAt: (row.resolved_at as string | null) ?? null,
-    closedAt: (row.closed_at as string | null) ?? null,
-    slaDueAt: (row.sla_due_at as string | null) ?? null,
-    isRepeatedAlert: Boolean(row.is_repeated_alert),
-    escalatedCount: Number(row.escalated_count ?? 0),
-    duplicateOfId: (row.duplicate_of_id as string | null) ?? null,
-    attachments: (row.attachments as Incident['attachments']) ?? [],
-    citizenRating: row.citizen_rating_score
-      ? {
-          score: Number(row.citizen_rating_score),
-          comment: (row.citizen_rating_comment as string | null) ?? null,
-          ratedAt: row.citizen_rated_at as string,
-        }
-      : null,
-  };
+  return [];
 }

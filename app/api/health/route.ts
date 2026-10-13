@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getEnvHealth, hasServiceRole, env } from '@/app/lib/env';
+import { getEnvHealth, hasServiceRole } from '@/app/lib/env';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '5.4.0';
+const PLATFORM_VERSION = '5.5.0';
 
 export async function GET() {
   const health = getEnvHealth();
@@ -46,7 +46,7 @@ export async function GET() {
       status: overallOk ? 'ok' : 'degraded',
       service: 'bika-platform',
       version: PLATFORM_VERSION,
-      ux: '5.4',
+      ux: '5.5',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),
       checks: {

@@ -9,9 +9,10 @@ import {
   AlertTriangle,
   ArrowRight,
   Loader2,
+  UserPlus,
 } from 'lucide-react';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
-import { ROLE_LABELS } from '@/app/lib/rbac';
+import { ROLE_LABELS, canReassignAnyCase } from '@/app/lib/rbac';
 
 export default function OfficerDashboardPage() {
   const me = useOfficerMe();
@@ -27,6 +28,7 @@ export default function OfficerDashboardPage() {
 
   const { user, queue } = me.data;
   const pressure = queue.slaOverdueMine > 0 || queue.slaOverdueInMyScope > 0;
+  const isAdmin = canReassignAnyCase(user.role);
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -42,13 +44,24 @@ export default function OfficerDashboardPage() {
               {user.department || 'Official'} · {user.agencyCode ?? 'Agency'} · {user.region}
             </p>
           </div>
-          <Link
-            href="/officer/queue"
-            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-yellow-500/15 transition"
-          >
-            <span>Open queue</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {isAdmin && (
+              <Link
+                href="/officer/reassign"
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-yellow-400 font-bold text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Reassign</span>
+              </Link>
+            )}
+            <Link
+              href="/officer/queue"
+              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-yellow-500/15 transition"
+            >
+              <span>Open queue</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
         {pressure && (
           <div className="relative mt-4 flex items-start gap-2 bg-rose-950/40 border border-rose-500/40 rounded-xl px-3 py-2.5 text-[11px] text-rose-200">

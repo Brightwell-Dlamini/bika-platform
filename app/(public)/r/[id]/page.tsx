@@ -273,7 +273,7 @@ function CitizenRatingCard({
     try {
       await apiFetch(`/api/reports/${incidentId}/rate`, {
         method: 'POST',
-        body: JSON.stringify({ score, comment: comment.trim() || undefined }),
+        body: { score, comment: comment.trim() || undefined },
       });
       toast.success('Thank you for your feedback.');
       onRated();
