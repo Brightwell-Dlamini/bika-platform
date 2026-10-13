@@ -9,6 +9,7 @@ import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
 import { dispatch } from '@/app/lib/notifications/dispatcher';
 import { officerAssignment } from '@/app/lib/notifications/templates';
+import { mapIncident } from '@/app/lib/mappers/incident';
 import type { ApiResponse, Incident } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
@@ -62,8 +63,6 @@ export async function POST(
 
   const supabase = createServiceSupabase();
 
-  // Only Admins/Super Admins can reassign to another officer.
-  // Officers can claim a case only for themselves.
   const isSelfClaim = officerId === caller.id;
   if (!isSelfClaim && !canRunWork(caller.role)) {
     const body: ApiResponse<never> = {
@@ -74,7 +73,6 @@ export async function POST(
     return NextResponse.json(body, { status: 403 });
   }
 
-  // Verify target officer
   const { data: officer, error: officerError } = await supabase
     .from('profiles')
     .select('id, name, agency_code, active, on_duty')
@@ -98,7 +96,6 @@ export async function POST(
     return NextResponse.json(body, { status: 403 });
   }
 
-  // Verify incident exists
   const { data: incident, error: fetchError } = await supabase
     .from('incidents')
     .select('id, status, assigned_officer_id')
@@ -123,12 +120,10 @@ export async function POST(
     updated_at: now,
   };
 
-  // Auto-advance status if still in early phase
   if (incident.status === 'submitted' || incident.status === 'triaged') {
     patch.status = 'assigned';
   }
 
-  // Close out previous assignment record
   if (incident.assigned_officer_id) {
     await supabase
       .from('assignments')
@@ -158,7 +153,6 @@ export async function POST(
     return NextResponse.json(body, { status: 500 });
   }
 
-  // Track assignment history
   await supabase.from('assignments').insert({
     incident_id: id,
     officer_id: officer.id,
@@ -167,7 +161,6 @@ export async function POST(
     reason: reason ?? null,
   });
 
-  // Log event
   await supabase.from('incident_events').insert({
     incident_id: id,
     type: 'incident.assigned',
@@ -191,25 +184,22 @@ export async function POST(
     actorId: caller.id,
   });
 
-  // Notify the assigned officer — fire-and-forget.
-  void notifyAssignedOfficer(id, officer.id, officer.name, updated).catch((err) => {
-    logger.warn('assign_notify_failed', {
-      requestId,
-      incidentId: id,
-      error: String(err),
-    });
-  });
+  void notifyAssignedOfficer(id, officer.id, officer.name, updated as Record<string, unknown>).catch(
+    (err) => {
+      logger.warn('assign_notify_failed', {
+        requestId,
+        incidentId: id,
+        error: String(err),
+      });
+    }
+  );
 
   const body: ApiResponse<{ incident: Incident }> = {
     ok: true,
-    data: { incident: mapIncident(updated) },
+    data: { incident: mapIncident(updated as Record<string, unknown>) },
   };
   return NextResponse.json(body);
 }
-
-// -----------------------------------------------------------------------------
-// Officer notification
-// -----------------------------------------------------------------------------
 
 async function notifyAssignedOfficer(
   incidentId: string,
@@ -230,55 +220,4 @@ async function notifyAssignedOfficer(
       data: { incidentId, officerId, officerName },
     },
   });
-}
-
-// -----------------------------------------------------------------------------
-// Row mapper
-// -----------------------------------------------------------------------------
-
-function mapIncident(row: Record<string, unknown>): Incident {
-  return {
-    id: row.id as string,
-    reportType: row.report_type as Incident['reportType'],
-    category: row.category as string,
-    mode: row.mode as Incident['mode'],
-    region: row.region as Incident['region'],
-    location: row.location as string,
-    description: row.description as string,
-    severity: row.severity as Incident['severity'],
-    status: row.status as Incident['status'],
-    reporterName: (row.reporter_name as string | null) ?? null,
-    reporterPhone: (row.reporter_phone as string | null) ?? null,
-    reporterEmail: (row.reporter_email as string | null) ?? null,
-    isAnonymous: Boolean(row.is_anonymous),
-    vehicleRegistration: (row.vehicle_registration as string | null) ?? null,
-    fleetId: (row.fleet_id as string | null) ?? null,
-    establishmentId: (row.establishment_id as string | null) ?? null,
-    operatorName: (row.operator_name as string | null) ?? null,
-    driverName: (row.driver_name as string | null) ?? null,
-    establishmentName: (row.establishment_name as string | null) ?? null,
-    assignedOfficerId: (row.assigned_officer_id as string | null) ?? null,
-    assignedOfficerName: (row.assigned_officer_name as string | null) ?? null,
-    assignedAgencyCode: (row.assigned_agency_code as Incident['assignedAgencyCode']) ?? null,
-    assignedAt: (row.assigned_at as string | null) ?? null,
-    coordinates: (row.coordinates as Incident['coordinates']) ?? null,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
-    triagedAt: (row.triaged_at as string | null) ?? null,
-    firstRespondedAt: (row.first_responded_at as string | null) ?? null,
-    resolvedAt: (row.resolved_at as string | null) ?? null,
-    closedAt: (row.closed_at as string | null) ?? null,
-    slaDueAt: (row.sla_due_at as string | null) ?? null,
-    isRepeatedAlert: Boolean(row.is_repeated_alert),
-    escalatedCount: Number(row.escalated_count ?? 0),
-    duplicateOfId: (row.duplicate_of_id as string | null) ?? null,
-    attachments: (row.attachments as Incident['attachments']) ?? [],
-    citizenRating: row.citizen_rating_score
-      ? {
-          score: Number(row.citizen_rating_score),
-          comment: (row.citizen_rating_comment as string | null) ?? null,
-          ratedAt: row.citizen_rated_at as string,
-        }
-      : null,
-  };
 }

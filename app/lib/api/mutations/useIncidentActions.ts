@@ -43,6 +43,19 @@ export function useAssignIncident(id: string) {
   });
 }
 
+/** Atomic claim + in_progress — preferred over assign+transition. */
+export function useAcknowledgeIncident(id: string) {
+  const invalidate = useInvalidateIncident(id);
+  return useMutation({
+    mutationFn: async () =>
+      apiFetch<{ incident: Incident }>(`/api/reports/${id}/acknowledge`, {
+        method: 'POST',
+        body: {},
+      }),
+    onSuccess: invalidate,
+  });
+}
+
 export function useAddNote(id: string) {
   const invalidate = useInvalidateIncident(id);
   return useMutation({

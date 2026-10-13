@@ -1,6 +1,6 @@
 {
   "name": "bika-platform",
-  "version": "5.5.1",
+  "version": "5.6.0",
   "private": true,
   "engines": {
     "node": "24.x"
@@ -10,7 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:smoke": "node scripts/smoke-reference-id.mjs",
+    "test:smoke": "node scripts/smoke-reference-id.mjs && node scripts/smoke-transitions.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
