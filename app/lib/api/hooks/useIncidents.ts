@@ -10,10 +10,6 @@ interface IncidentsResponse {
   total: number;
 }
 
-/**
- * Fetch a filtered list of incidents.
- * Scoping (region/agency) is enforced server-side by RLS + route logic.
- */
 export function useIncidents(
   filters: IncidentFilters = {},
   options?: Omit<UseQueryOptions<IncidentsResponse>, 'queryKey' | 'queryFn'>
@@ -30,6 +26,7 @@ export function useIncidents(
       if (filters.assignedTo) params.set('assignedTo', filters.assignedTo);
       if (filters.search) params.set('search', filters.search);
       if (filters.onlyOverdue) params.set('onlyOverdue', 'true');
+      if (filters.onlyUnassigned) params.set('onlyUnassigned', 'true');
       if (filters.limit) params.set('limit', String(filters.limit));
 
       const qs = params.toString();
@@ -39,10 +36,6 @@ export function useIncidents(
   });
 }
 
-/**
- * Invalidate all incident queries — call after any mutation that changes
- * incident state (submit, status change, assignment).
- */
 export function useInvalidateIncidents() {
   const qc = useQueryClient();
   return () => qc.invalidateQueries({ queryKey: qk.incidents.all });
