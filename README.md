@@ -4,7 +4,7 @@
 
 > *See something, say something*
 
-**Version:** 5.3.0  
+**Version:** 5.6.0  
 **Stack:** Next.js 15 · React 19 · Supabase · Tailwind
 
 ---
@@ -13,11 +13,9 @@
 
 | Audience | Capabilities |
 |----------|----------------|
-| **Citizens** | Report (transport / food-trade), attach photos, track by BIKA ID, rate resolved cases |
-| **Officers** | Queue, acknowledge, assign, notes, SLA awareness |
-| **Admins** | Reassign, command centre, analytics, users, hotlines, system config |
-
-Channels: **Web / PWA**, **USSD** (`POST /api/ussd` with `USSD_WEBHOOK_SECRET`).
+| **Citizens** | Report, attach photos, track by BIKA ID, rate resolved cases |
+| **Officers** | Queue, atomic acknowledge, notes, SLA |
+| **Admins** | Reassign, command centre, users, hotlines, system |
 
 ---
 
@@ -27,13 +25,12 @@ Channels: **Web / PWA**, **USSD** (`POST /api/ussd` with `USSD_WEBHOOK_SECRET`).
 nvm use   # Node 24.x
 npm install
 cp .env.example .env.local
-# set NEXT_PUBLIC_SUPABASE_*, SUPABASE_SERVICE_ROLE_KEY
 npm run dev
 ```
 
-Database: apply SQL under `supabase/` (`000_reset.sql` for empty/dev only; `009_production_go_live.sql` for prod deltas).
+Health: `GET /api/health` → `5.6.0`
 
-Health: `GET /api/health` → version `5.3.0`.
+Gap tracker: [docs/GAP_CHECKLIST.md](docs/GAP_CHECKLIST.md)
 
 ---
 
@@ -41,31 +38,13 @@ Health: `GET /api/health` → version `5.3.0`.
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Local server |
+| `npm run dev` | Local |
 | `npm run build` | Production build |
-| `npm run test:smoke` | Reference ID smoke tests |
+| `npm run test:smoke` | Reference ID + transition graph |
 | `npm run lint` | ESLint |
 
-CI: `.github/workflows/ci.yml` on push/PR to `main`.
+SLA cron: `GET /api/cron/sla-check` with `Authorization: Bearer $CRON_SECRET`
 
 ---
 
-## Ops notes
-
-- **Rate limits:** in-memory by default; set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` for multi-instance.
-- **Attachments:** Supabase Storage bucket `incident-attachments`.
-- **Deploy:** point production host at `main`; confirm health version after each release.
-- **Gap tracker:** [docs/GAP_CHECKLIST.md](docs/GAP_CHECKLIST.md)
-
----
-
-## Security
-
-- Middleware: no public signup, CSP + HSTS, legacy redirects
-- Report POST / public lookup / rate / USSD rate-limited
-- Service role server-only; RBAC helpers in `app/lib/rbac.ts`
-- Rotate any seed/demo credentials before public launch
-
----
-
-*BIKA Platform · Kingdom of Eswatini national reporting initiative*
+*BIKA Platform · Kingdom of Eswatini*
