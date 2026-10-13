@@ -1,6 +1,6 @@
 {
   "name": "bika-platform",
-  "version": "5.2.0",
+  "version": "5.3.0",
   "private": true,
   "engines": {
     "node": "24.x"
@@ -9,7 +9,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:smoke": "node scripts/smoke-reference-id.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

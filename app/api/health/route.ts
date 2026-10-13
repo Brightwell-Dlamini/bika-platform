@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getEnvHealth, hasServiceRole } from '@/app/lib/env';
+import { getEnvHealth, hasServiceRole, env } from '@/app/lib/env';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '5.2.0';
+const PLATFORM_VERSION = '5.3.0';
 
 export async function GET() {
   const health = getEnvHealth();
@@ -37,18 +37,23 @@ export async function GET() {
   }
 
   const overallOk = health.ok && (db.ok || !hasServiceRole());
+  const redisConfigured = Boolean(
+    process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+  );
 
   return NextResponse.json(
     {
       status: overallOk ? 'ok' : 'degraded',
       service: 'bika-platform',
       version: PLATFORM_VERSION,
-      ux: '5.2',
+      ux: '5.3',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),
       checks: {
         ...health,
         database: db,
+        rateLimitBackend: redisConfigured ? 'upstash' : 'memory',
+        ussdSecretConfigured: Boolean(env.USSD_WEBHOOK_SECRET),
       },
     },
     {
