@@ -4,7 +4,7 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '5.5.0';
+const PLATFORM_VERSION = '5.5.1';
 
 export async function GET() {
   const health = getEnvHealth();
