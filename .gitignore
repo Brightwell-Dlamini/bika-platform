@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Next.js build output
+.next/
+out/
+build/
+dist/
+
+# Production env and secrets
+.env
+.env*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Runtime data
+.pids
+*.pid
+*.seed
+*.pid.lock
+
+# Local caches
+.cache/
+.parcel-cache/
+.eslintcache
+*.tsbuildinfo
+
+# Testing / coverage
+coverage/
+.nyc_output/
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Misc local files
+*.local
+.local
+.tmp/
+tmp/
+
+# Deployment / generated assets
+.vercel/
+.netlify/
+*.pem
+
+# Supabase local state
+.supabase/
