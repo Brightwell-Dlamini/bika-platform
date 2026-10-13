@@ -14,7 +14,6 @@ import {
   Info,
 } from 'lucide-react';
 import {
-  zCitizenReportSubmission,
   zRegion,
   zMode,
   zSeverity,
@@ -25,6 +24,7 @@ import {
 } from '@/app/lib/schemas';
 import type { Mode, ReportType, Severity, Region } from '@/app/types';
 import { validateAndProcessImage } from '@/app/lib/uploads';
+import { toast } from 'sonner';
 
 const formSchema = z
   .object({
@@ -157,21 +157,27 @@ export function DetailsStep({
 
   const handleDetectGPS = () => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      form.setValue('location', 'Manzini Central Bus Rank');
+      toast.error('Location is not available on this device. Type the place name instead.');
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        form.setValue('coordinates', { lat: pos.coords.latitude, lng: pos.coords.longitude }, { shouldDirty: true });
+        form.setValue(
+          'coordinates',
+          { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          { shouldDirty: true }
+        );
         form.setValue(
           'location',
           `GPS Pin: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`,
           { shouldDirty: true }
         );
+        toast.success('Location pinned.');
       },
       () => {
-        form.setValue('location', 'Manzini Central Bus Rank', { shouldDirty: true });
-      }
+        toast.error('Could not get GPS. Allow location access or type the place manually.');
+      },
+      { enableHighAccuracy: true, timeout: 12000 }
     );
   };
 
@@ -219,7 +225,6 @@ export function DetailsStep({
         </div>
       )}
 
-      {/* Photo-first */}
       <div className="bg-slate-950/50 border border-slate-800 rounded-2xl p-4 space-y-3">
         <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
           Photo evidence first (optional, max 5, ≤1MB each)
