@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Inbox,
@@ -10,12 +10,29 @@ import {
   ArrowRight,
   Loader2,
   UserPlus,
+  Radio,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
+import { useIncidents } from '@/app/lib/api/hooks/useIncidents';
+import { apiFetch } from '@/app/lib/api/fetcher';
+import { qk } from '@/app/lib/api/queryKeys';
 import { ROLE_LABELS, canReassignAnyCase } from '@/app/lib/rbac';
+import { statusLabel, statusColor } from '@/app/lib/statusLabels';
 
 export default function OfficerDashboardPage() {
   const me = useOfficerMe();
+  const qc = useQueryClient();
+  const [dutyBusy, setDutyBusy] = useState(false);
+
+  const mine = useIncidents(
+    {
+      assignedTo: me.data?.user.id,
+      limit: 5,
+    },
+    { enabled: Boolean(me.data?.user.id) }
+  );
 
   if (me.isLoading || !me.data) {
     return (
@@ -29,6 +46,25 @@ export default function OfficerDashboardPage() {
   const { user, queue } = me.data;
   const pressure = queue.slaOverdueMine > 0 || queue.slaOverdueInMyScope > 0;
   const isAdmin = canReassignAnyCase(user.role);
+  const recent = (mine.data?.incidents ?? []).filter(
+    (i) => !['closed', 'resolved', 'rejected'].includes(i.status)
+  );
+
+  const toggleDuty = async () => {
+    setDutyBusy(true);
+    try {
+      await apiFetch<{ user: typeof user }>('/api/officer/me', {
+        method: 'PATCH',
+        body: { onDuty: !user.onDuty },
+      });
+      toast.success(user.onDuty ? 'You are now off duty.' : 'You are now on duty.');
+      qc.invalidateQueries({ queryKey: qk.users.me() });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update duty status.');
+    } finally {
+      setDutyBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -36,15 +72,44 @@ export default function OfficerDashboardPage() {
         <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(234,179,8,0.08),_transparent_50%)]" />
         <div className="relative flex flex-wrap items-center justify-between gap-3">
           <div>
-            <span className="bg-yellow-500 text-slate-950 font-extrabold text-[10px] px-2.5 py-0.5 rounded uppercase tracking-wide">
-              {ROLE_LABELS[user.role]}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="bg-yellow-500 text-slate-950 font-extrabold text-[10px] px-2.5 py-0.5 rounded uppercase tracking-wide">
+                {ROLE_LABELS[user.role]}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                  user.onDuty
+                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700'
+                }`}
+              >
+                <Radio className="w-3 h-3" />
+                {user.onDuty ? 'On duty' : 'Off duty'}
+              </span>
+            </div>
             <h1 className="text-2xl font-black text-white mt-2">{user.name}</h1>
             <p className="text-xs text-slate-400 mt-1">
               {user.department || 'Official'} · {user.agencyCode ?? 'Agency'} · {user.region}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleDuty}
+              disabled={dutyBusy}
+              className={`flex items-center gap-2 font-bold text-xs px-4 py-2.5 rounded-xl border transition disabled:opacity-50 ${
+                user.onDuty
+                  ? 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30'
+                  : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              {dutyBusy ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Radio className="w-4 h-4" />
+              )}
+              {user.onDuty ? 'Go off duty' : 'Go on duty'}
+            </button>
             {isAdmin && (
               <Link
                 href="/officer/reassign"
@@ -75,6 +140,14 @@ export default function OfficerDashboardPage() {
               <Link href="/officer/queue?overdue=1" className="underline font-bold text-rose-100">
                 Review overdue
               </Link>
+            </span>
+          </div>
+        )}
+        {!user.onDuty && (
+          <div className="relative mt-4 flex items-start gap-2 bg-slate-950/60 border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] text-slate-400">
+            <Radio className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              You are off duty. Auto-assignment will skip you until you go on duty.
             </span>
           </div>
         )}
@@ -120,6 +193,61 @@ export default function OfficerDashboardPage() {
         />
       </div>
 
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-extrabold text-white">Your open cases</h2>
+          <Link
+            href="/officer/queue?scope=mine"
+            className="text-[10px] font-bold text-yellow-400 hover:underline"
+          >
+            View all
+          </Link>
+        </div>
+        {mine.isLoading ? (
+          <div className="flex items-center gap-2 text-slate-500 text-xs py-6 justify-center">
+            <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+          </div>
+        ) : recent.length === 0 ? (
+          <p className="text-xs text-slate-500 py-4 text-center">
+            No open cases assigned to you. Check the{' '}
+            <Link href="/officer/queue?scope=unassigned" className="text-yellow-400 hover:underline">
+              unassigned queue
+            </Link>
+            .
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-800">
+            {recent.slice(0, 5).map((inc) => (
+              <li key={inc.id}>
+                <Link
+                  href={`/officer/case/${inc.id}`}
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-slate-800/40 -mx-2 px-2 rounded-lg transition"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-[11px] font-bold text-yellow-400">
+                        {inc.id}
+                      </span>
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${statusColor(inc.status)}`}
+                      >
+                        {statusLabel(inc.status)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white font-semibold truncate mt-0.5">
+                      {inc.category} · {inc.location}
+                    </p>
+                  </div>
+                  <span className="text-[10px] text-slate-500 shrink-0">
+                    {new Date(inc.createdAt).toLocaleDateString()}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
         <h2 className="text-sm font-extrabold text-white">Getting started</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
@@ -132,8 +260,8 @@ export default function OfficerDashboardPage() {
             body="Advance the lifecycle with status buttons. Log public notes citizens can see."
           />
           <GuideCard
-            title="Use templates"
-            body="Note chips (Acknowledge, On scene, Resolved) speed consistent citizen updates."
+            title="Duty status"
+            body="Toggle on duty so automation can assign critical cases to you when you are available."
           />
         </div>
       </div>

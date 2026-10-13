@@ -40,6 +40,12 @@ export function AssignDialog({
 
   if (!open) return null;
 
+  // Prefer on-duty officers at the top of the list
+  const sorted = [...(officers.data ?? [])].sort((a, b) => {
+    if (a.onDuty === b.onDuty) return a.name.localeCompare(b.name);
+    return a.onDuty ? -1 : 1;
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!officerId) {
@@ -64,6 +70,7 @@ export function AssignDialog({
         <div className="flex items-center justify-between">
           <h3 className="text-base font-extrabold text-white">Assign case</h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
           >
@@ -101,16 +108,14 @@ export function AssignDialog({
               <option value="">
                 {officers.isLoading ? 'Loading…' : 'Select an officer'}
               </option>
-              {(officers.data ?? []).map((o) => (
+              {sorted.map((o) => (
                 <option key={o.id} value={o.id}>
-                  {o.name} ({o.region})
+                  {o.name} ({o.region}){o.onDuty ? ' · on duty' : ' · off duty'}
                 </option>
               ))}
             </select>
             {officers.isError && (
-              <p className="text-rose-400 mt-1">
-                {(officers.error as Error).message}
-              </p>
+              <p className="text-rose-400 mt-1">{(officers.error as Error).message}</p>
             )}
           </div>
 

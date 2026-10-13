@@ -1,7 +1,7 @@
-/* BIKA Platform – Service Worker v5.5
+/* BIKA Platform – Service Worker v5.7
  * Network-first for documents and Next.js bundles so deploys are not stuck on a dead cached shell.
  */
-const CACHE_NAME = 'bika-v55';
+const CACHE_NAME = 'bika-v57';
 const PRECACHE_URLS = ['/manifest.json', '/Bika.png'];
 
 self.addEventListener('install', (event) => {
