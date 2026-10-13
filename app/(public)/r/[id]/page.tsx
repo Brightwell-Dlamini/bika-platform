@@ -28,6 +28,7 @@ function humanEventType(type: string): string {
     'incident.assigned': 'Assigned to an officer',
     'incident.status_changed': 'Status updated',
     'incident.note': 'Officer update',
+    'incident.note_added': 'Officer update',
     'incident.escalated': 'Escalated',
     'incident.resolved': 'Marked resolved',
     'incident.closed': 'Closed',

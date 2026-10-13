@@ -4,6 +4,7 @@ import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/serv
 import { isPublic } from '@/app/lib/rbac';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
+import { mapEvent } from '@/app/lib/mappers/incident';
 import type { ApiResponse, IncidentEvent } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,6 @@ export async function POST(
 
   const supabase = createServiceSupabase();
 
-  // Verify incident exists
   const { data: incident, error: fetchError } = await supabase
     .from('incidents')
     .select('id')
@@ -100,7 +100,6 @@ export async function POST(
     return NextResponse.json(body, { status: 500 });
   }
 
-  // Touch the incident's updated_at
   await supabase.from('incidents').update({ updated_at: new Date().toISOString() }).eq('id', id);
 
   logger.info('note_added', {
@@ -113,17 +112,7 @@ export async function POST(
   const body: ApiResponse<{ event: IncidentEvent }> = {
     ok: true,
     data: {
-      event: {
-        id: event.id,
-        incidentId: event.incident_id,
-        type: event.type,
-        actorId: event.actor_id,
-        actorName: event.actor_name,
-        actorRole: event.actor_role,
-        isPublic: event.is_public,
-        payload: event.payload,
-        createdAt: event.created_at,
-      },
+      event: mapEvent(event as Record<string, unknown>),
     },
   };
   return NextResponse.json(body);

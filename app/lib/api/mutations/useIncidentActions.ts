@@ -12,6 +12,8 @@ function useInvalidateIncident(id: string) {
     qc.invalidateQueries({ queryKey: qk.incidents.lists() });
     qc.invalidateQueries({ queryKey: qk.incidents.myReports() });
     qc.invalidateQueries({ queryKey: qk.users.me() });
+    // Legacy key (pre-5.6.1) — safe no-op if unused
+    qc.invalidateQueries({ queryKey: ['officer', 'me'] });
   };
 }
 
@@ -43,7 +45,6 @@ export function useAssignIncident(id: string) {
   });
 }
 
-/** Atomic claim + in_progress — preferred over assign+transition. */
 export function useAcknowledgeIncident(id: string) {
   const invalidate = useInvalidateIncident(id);
   return useMutation({
