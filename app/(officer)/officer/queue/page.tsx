@@ -55,7 +55,6 @@ export default function QueuePage() {
   const region = sp.get('region') ?? undefined;
   const q = sp.get('q') ?? '';
 
-  // Debounced search so typing does not thrash the API
   const [searchDraft, setSearchDraft] = useState(q);
   useEffect(() => {
     setSearchDraft(q);
@@ -81,8 +80,7 @@ export default function QueuePage() {
       base.assignedTo = me.data.user.id;
     }
     if (scope === 'unassigned') {
-      // Client-side filter after fetch — API supports assignedTo but not "null"
-      base.limit = 300;
+      base.onlyUnassigned = true;
     }
     if (scope === 'resolved') {
       base.status = base.status ?? 'resolved';
@@ -94,13 +92,7 @@ export default function QueuePage() {
     enabled: scope !== 'mine' || Boolean(me.data),
   });
 
-  const rows = useMemo(() => {
-    let list = incidents.data?.incidents ?? [];
-    if (scope === 'unassigned') {
-      list = list.filter((i) => !i.assignedOfficerId);
-    }
-    return list;
-  }, [incidents.data, scope]);
+  const rows = incidents.data?.incidents ?? [];
 
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(sp.toString());
@@ -122,9 +114,7 @@ export default function QueuePage() {
           <h1 className="text-2xl font-black text-white">Case queue</h1>
           <p className="text-xs text-slate-400 mt-1">
             {rows.length} case{rows.length === 1 ? '' : 's'}
-            {incidents.data?.total != null && scope !== 'unassigned'
-              ? ` · ${incidents.data.total} total in query`
-              : ''}
+            {incidents.data?.total != null ? ` · ${incidents.data.total} matched` : ''}
             {overdue ? ' · overdue only' : ''}
           </p>
         </div>

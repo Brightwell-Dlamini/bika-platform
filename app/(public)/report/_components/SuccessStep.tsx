@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowRight, Copy, Check, AlertTriangle, Share2 } from 'lucide-react';
 
 interface SuccessStepProps {
@@ -10,7 +9,6 @@ interface SuccessStepProps {
 }
 
 export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
-  const router = useRouter();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -34,6 +32,11 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
     } catch {
       // user cancelled share
     }
+  };
+
+  const handleAnother = () => {
+    // Full navigation clears wizard state + draft reliably
+    window.location.href = '/report';
   };
 
   return (
@@ -99,7 +102,7 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
         </button>
         <button
           type="button"
-          onClick={() => router.push('/report')}
+          onClick={handleAnother}
           className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs hover:bg-slate-700 transition"
         >
           Submit another report

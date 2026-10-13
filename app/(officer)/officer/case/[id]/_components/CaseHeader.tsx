@@ -3,6 +3,7 @@
 import React from 'react';
 import { Copy, Check, MapPin, Clock, User, Paperclip } from 'lucide-react';
 import type { Incident } from '@/app/types';
+import { statusLabel, statusColor } from '@/app/lib/statusLabels';
 
 const SEV_STYLE: Record<Incident['severity'], string> = {
   CRITICAL: 'bg-red-600 text-white',
@@ -33,6 +34,7 @@ export function CaseHeader({ incident }: { incident: Incident }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <button
+            type="button"
             onClick={handleCopy}
             className="flex items-center gap-2 font-mono text-lg font-black text-yellow-400 hover:text-yellow-300"
           >
@@ -47,14 +49,14 @@ export function CaseHeader({ incident }: { incident: Incident }) {
             <span>{new Date(incident.createdAt).toLocaleString()}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span
             className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded ${SEV_STYLE[incident.severity]}`}
           >
             {incident.severity}
           </span>
-          <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded bg-slate-800 text-slate-200 border border-slate-700">
-            {incident.status}
+          <span className={`text-[10px] font-bold px-2.5 py-1 rounded ${statusColor(incident.status)}`}>
+            {statusLabel(incident.status)}
           </span>
           {overdue && (
             <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-2.5 py-1 rounded bg-rose-600/20 text-rose-300 border border-rose-500/40">
