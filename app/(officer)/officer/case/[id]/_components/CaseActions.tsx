@@ -193,7 +193,6 @@ export function CaseActions({
                 </button>
                 <button
                   type="button"
-bytes
                   onClick={handleEscalate}
                   disabled={transition.isPending}
                   className="px-4 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold disabled:opacity-50"
