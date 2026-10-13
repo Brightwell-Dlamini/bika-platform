@@ -1,24 +1,56 @@
 import { NextResponse } from 'next/server';
-import { getEnvHealth } from '@/app/lib/env';
+import { getEnvHealth, hasServiceRole } from '@/app/lib/env';
+import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '5.0.0';
+const PLATFORM_VERSION = '5.1.0';
 
 export async function GET() {
   const health = getEnvHealth();
+  let db: { ok: boolean; latencyMs: number | null; error?: string } = {
+    ok: false,
+    latencyMs: null,
+  };
+
+  if (hasServiceRole()) {
+    const t0 = Date.now();
+    try {
+      const supabase = createServiceSupabase();
+      // Lightweight probe — does not expose row data
+      const { error } = await supabase.from('incidents').select('id', { count: 'exact', head: true }).limit(1);
+      const latencyMs = Date.now() - t0;
+      if (error) {
+        db = { ok: false, latencyMs, error: error.message.slice(0, 120) };
+      } else {
+        db = { ok: true, latencyMs };
+      }
+    } catch (err) {
+      db = {
+        ok: false,
+        latencyMs: Date.now() - t0,
+        error: String(err).slice(0, 120),
+      };
+    }
+  }
+
+  const overallOk = health.ok && (db.ok || !hasServiceRole());
+
   return NextResponse.json(
     {
-      status: health.ok ? 'ok' : 'degraded',
+      status: overallOk ? 'ok' : 'degraded',
       service: 'bika-platform',
       version: PLATFORM_VERSION,
-      ux: '5.0',
+      ux: '5.1',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),
-      checks: health,
+      checks: {
+        ...health,
+        database: db,
+      },
     },
     {
-      status: health.ok ? 200 : 503,
+      status: overallOk ? 200 : 503,
       headers: { 'Cache-Control': 'no-store, max-age=0' },
     }
   );
