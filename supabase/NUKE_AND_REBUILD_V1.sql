@@ -1,5 +1,4 @@
 -- =============================================================================
--- BIKA PLATFORM — NUKE AND REBUILD V1
 -- =============================================================================
 -- WARNING: This DESTROYS all public app data and recreates schema from scratch.
 -- Does NOT delete auth.users (your login accounts stay). Re-link profiles after.
