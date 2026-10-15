@@ -5,6 +5,10 @@ import { useRouter } from 'next/navigation';
 import { Search, FileText, ExternalLink, Inbox } from 'lucide-react';
 import { getMyReports, type MyReportEntry } from '@/app/lib/myReports';
 import { statusLabel } from '@/app/lib/statusLabels';
+import {
+  normalizeReferenceId,
+  isPlausibleReferenceId,
+} from '@/app/lib/utils/referenceId';
 import { toast } from 'sonner';
 
 export default function TrackPage() {
@@ -24,9 +28,13 @@ export default function TrackPage() {
   }, []);
 
   const handleTrack = (id: string) => {
-    const clean = id.trim().toUpperCase();
+    const clean = normalizeReferenceId(id);
     if (!clean) {
       toast.error('Please enter a reference ID.');
+      return;
+    }
+    if (!isPlausibleReferenceId(clean)) {
+      toast.error('That does not look like a valid BIKA reference ID.');
       return;
     }
     router.push(`/r/${encodeURIComponent(clean)}`);
@@ -58,11 +66,14 @@ export default function TrackPage() {
             className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3.5 text-sm text-white font-mono uppercase focus:outline-none focus:border-yellow-500 transition"
             autoFocus
             aria-label="BIKA reference ID"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
           />
           <button
             type="button"
             onClick={() => handleTrack(input)}
-            className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-extrabold px-6 py-3.5 rounded-xl text-sm shadow-lg shadow-yellow-500/20 shrink-0 transition"
+            className="bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-extrabold px-6 py-3.5 rounded-xl text-sm shadow-lg shadow-yellow-500/20 shrink-0 transition touch-manipulation"
           >
             Track
           </button>
@@ -92,7 +103,7 @@ export default function TrackPage() {
                 key={r.id}
                 type="button"
                 onClick={() => handleTrack(r.id)}
-                className="w-full flex items-center justify-between gap-3 p-3.5 bg-slate-950 border border-slate-800 hover:border-yellow-500/40 rounded-xl transition text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500"
+                className="w-full flex items-center justify-between gap-3 p-3.5 bg-slate-950 border border-slate-800 hover:border-yellow-500/40 rounded-xl transition text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 touch-manipulation"
               >
                 <div className="min-w-0">
                   <div className="font-mono text-xs font-bold text-yellow-400 truncate">{r.id}</div>
@@ -117,7 +128,7 @@ export default function TrackPage() {
           <button
             type="button"
             onClick={() => router.push('/report')}
-            className="inline-flex mt-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-yellow-400 transition"
+            className="inline-flex mt-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-yellow-400 transition touch-manipulation"
           >
             File a report
           </button>

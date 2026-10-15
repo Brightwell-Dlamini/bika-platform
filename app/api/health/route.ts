@@ -4,7 +4,7 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '5.8.0';
+const PLATFORM_VERSION = '5.9.0';
 
 export async function GET() {
   const health = getEnvHealth();
@@ -46,7 +46,7 @@ export async function GET() {
       status: overallOk ? 'ok' : 'degraded',
       service: 'bika-platform',
       version: PLATFORM_VERSION,
-      ux: '5.8',
+      ux: '5.9',
       timestamp: new Date().toISOString(),
       uptimeSeconds: Math.floor(process.uptime()),
       checks: {

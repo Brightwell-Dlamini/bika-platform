@@ -13,21 +13,14 @@ import {
   citizenResolved,
 } from '@/app/lib/notifications/templates';
 import { mapIncident } from '@/app/lib/mappers/incident';
+import {
+  ALLOWED_TRANSITIONS,
+  CITIZEN_NOTIFY_STATUSES,
+  canTransition,
+} from '@/app/lib/statusTransitions';
 import type { ApiResponse, Incident, IncidentStatus } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
-
-const ALLOWED: Record<IncidentStatus, IncidentStatus[]> = {
-  submitted: ['triaged', 'assigned', 'in_progress', 'rejected', 'escalated'],
-  triaged: ['assigned', 'in_progress', 'awaiting_info', 'rejected', 'escalated'],
-  assigned: ['in_progress', 'awaiting_info', 'resolved', 'escalated', 'triaged'],
-  in_progress: ['resolved', 'awaiting_info', 'escalated', 'closed'],
-  awaiting_info: ['in_progress', 'resolved', 'rejected'],
-  escalated: ['in_progress', 'resolved', 'closed'],
-  resolved: ['closed'],
-  closed: [],
-  rejected: [],
-};
 
 const bodySchema = z.object({
   to: z.enum([
@@ -43,15 +36,6 @@ const bodySchema = z.object({
   ]),
   note: z.string().max(2000).optional(),
 });
-
-const CITIZEN_NOTIFY_STATUSES: IncidentStatus[] = [
-  'triaged',
-  'assigned',
-  'in_progress',
-  'resolved',
-  'closed',
-  'escalated',
-];
 
 export async function POST(
   req: NextRequest,
@@ -135,12 +119,12 @@ export async function POST(
 
   const current = incident.status as IncidentStatus;
 
-  if (!ALLOWED[current]?.includes(to)) {
+  if (!canTransition(current, to)) {
     const body: ApiResponse<never> = {
       ok: false,
       code: 'INVALID_TRANSITION',
       error: `Cannot transition from "${current}" to "${to}".`,
-      details: { current, allowed: ALLOWED[current] },
+      details: { current, allowed: ALLOWED_TRANSITIONS[current] },
     };
     return NextResponse.json(body, { status: 409 });
   }

@@ -11,6 +11,11 @@ interface SuccessStepProps {
 export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
   const [copied, setCopied] = useState(false);
 
+  const trackUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/r/${encodeURIComponent(referenceId)}`
+      : `/r/${referenceId}`;
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(referenceId);
@@ -22,12 +27,18 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
   };
 
   const handleShare = async () => {
-    const text = `BIKA reference: ${referenceId}`;
+    const text = `BIKA reference: ${referenceId}\nTrack: ${trackUrl}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'BIKA report', text });
+        await navigator.share({
+          title: 'BIKA report',
+          text,
+          url: trackUrl,
+        });
       } else {
-        await handleCopy();
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
       }
     } catch {
       // user cancelled share
@@ -35,7 +46,6 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
   };
 
   const handleAnother = () => {
-    // Full navigation clears wizard state + draft reliably
     window.location.href = '/report';
   };
 
@@ -68,18 +78,18 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-yellow-300 border border-slate-700 flex items-center justify-center gap-1.5 transition"
+            className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-yellow-300 border border-slate-700 flex items-center justify-center gap-1.5 transition touch-manipulation"
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Copied' : 'Copy'}</span>
+            <span>{copied ? 'Copied' : 'Copy ID'}</span>
           </button>
           <button
             type="button"
             onClick={handleShare}
-            className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5 transition"
+            className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 flex items-center justify-center gap-1.5 transition touch-manipulation"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span>Share</span>
+            <span>Share link</span>
           </button>
         </div>
 
@@ -95,7 +105,7 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
         <button
           type="button"
           onClick={onTrack}
-          className="w-full py-3.5 rounded-xl bg-yellow-500 text-slate-950 font-black text-xs hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20"
+          className="w-full py-3.5 rounded-xl bg-yellow-500 text-slate-950 font-black text-xs hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 touch-manipulation"
         >
           <span>Track this report</span>
           <ArrowRight className="w-4 h-4" />
@@ -103,7 +113,7 @@ export function SuccessStep({ referenceId, onTrack }: SuccessStepProps) {
         <button
           type="button"
           onClick={handleAnother}
-          className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs hover:bg-slate-700 transition"
+          className="w-full py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs hover:bg-slate-700 transition touch-manipulation"
         >
           Submit another report
         </button>

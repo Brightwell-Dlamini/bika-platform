@@ -11,17 +11,8 @@ import {
 } from '@/app/lib/api/mutations/useIncidentActions';
 import { canRunWork } from '@/app/lib/rbac';
 import { statusLabel } from '@/app/lib/statusLabels';
+import { PRIMARY_NEXT, canAcknowledge } from '@/app/lib/statusTransitions';
 import { AssignDialog } from './AssignDialog';
-
-const NEXT_HINTS: Partial<Record<IncidentStatus, IncidentStatus[]>> = {
-  submitted: ['triaged', 'assigned', 'rejected'],
-  triaged: ['assigned', 'in_progress', 'awaiting_info', 'rejected'],
-  assigned: ['in_progress', 'awaiting_info', 'resolved'],
-  in_progress: ['resolved', 'awaiting_info'],
-  awaiting_info: ['in_progress', 'resolved', 'rejected'],
-  escalated: ['in_progress', 'resolved'],
-  resolved: ['closed'],
-};
 
 export function CaseActions({
   incident,
@@ -37,11 +28,11 @@ export function CaseActions({
   const [escalateReason, setEscalateReason] = useState('');
   const [showEscalate, setShowEscalate] = useState(false);
 
-  const suggestions = NEXT_HINTS[incident.status] ?? [];
+  const suggestions = PRIMARY_NEXT[incident.status] ?? [];
   const assignedToMe = incident.assignedOfficerId === currentUser.id;
   const canReassign = canRunWork(currentUser.role);
-  const canAcknowledge =
-    ['submitted', 'triaged', 'assigned'].includes(incident.status) &&
+  const showAck =
+    canAcknowledge(incident.status) &&
     (!incident.assignedOfficerId || assignedToMe);
 
   const busy = transition.isPending || assign.isPending || acknowledge.isPending;
@@ -100,7 +91,7 @@ export function CaseActions({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-extrabold text-white">Workflow actions</h3>
         <div className="flex flex-wrap items-center gap-2">
-          {canAcknowledge && (
+          {showAck && (
             <button
               type="button"
               onClick={handleAcknowledge}
