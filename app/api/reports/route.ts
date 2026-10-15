@@ -15,7 +15,7 @@ import { dispatch } from '@/app/lib/notifications/dispatcher';
 import { citizenReceipt } from '@/app/lib/notifications/templates';
 import { logger, newRequestId } from '@/app/lib/logger';
 import { isPublic, isOfficer, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
-import { rateLimit, clientIpFromHeaders } from '@/app/lib/rateLimit';
+import { rateLimitAsync, clientIpFromHeaders } from '@/app/lib/rateLimit';
 import { mapIncident } from '@/app/lib/mappers/incident';
 import type { ApiResponse, Incident } from '@/app/types';
 
@@ -25,10 +25,14 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   const requestId = newRequestId();
   const key = clientIpFromHeaders(req.headers);
-  const rl = rateLimit(key, 6);
+  const rl = await rateLimitAsync(key, 6);
 
   if (!rl.allowed) {
-    logger.warn('report_rate_limited', { requestId, clientKey: key.slice(0, 16) });
+    logger.warn('report_rate_limited', {
+      requestId,
+      clientKey: key.slice(0, 16),
+      backend: rl.backend,
+    });
     const body: ApiResponse<never> = {
       ok: false,
       code: 'RATE_LIMITED',
