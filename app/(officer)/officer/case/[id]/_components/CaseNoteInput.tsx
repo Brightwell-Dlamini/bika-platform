@@ -27,8 +27,8 @@ export const CaseNoteInput = forwardRef<HTMLTextAreaElement, CaseNoteInputProps>
       if (t.preferPublic !== undefined) setIsPublic(t.preferPublic);
     };
 
-    const submit = (e: React.FormEvent) => {
-      e.preventDefault();
+    const submit = (e?: React.FormEvent) => {
+      e?.preventDefault();
       const trimmed = body.trim();
       if (trimmed.length < 1) {
         toast.error('Write a note before posting.');
@@ -44,6 +44,13 @@ export const CaseNoteInput = forwardRef<HTMLTextAreaElement, CaseNoteInputProps>
           onError: (err) => toast.error(err.message),
         }
       );
+    };
+
+    const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!mutation.isPending && body.trim().length > 0) submit();
+      }
     };
 
     return (
@@ -79,7 +86,6 @@ export const CaseNoteInput = forwardRef<HTMLTextAreaElement, CaseNoteInputProps>
           )}
         </div>
 
-        {/* Quick templates */}
         {canPostInternal && (
           <div className="flex flex-wrap gap-1.5">
             {OFFICER_TEMPLATES.map((t) => (
@@ -100,8 +106,11 @@ export const CaseNoteInput = forwardRef<HTMLTextAreaElement, CaseNoteInputProps>
           rows={3}
           value={body}
           onChange={(e) => setBody(e.target.value)}
+          onKeyDown={onKeyDown}
           placeholder={
-            isPublic ? 'Visible to the citizen…' : 'Internal note — invisible to the citizen'
+            isPublic
+              ? 'Visible to the citizen… (Ctrl/⌘+Enter to post)'
+              : 'Internal note — invisible to the citizen (Ctrl/⌘+Enter to post)'
           }
           className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-yellow-500 resize-none"
         />

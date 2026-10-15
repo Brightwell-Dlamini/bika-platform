@@ -4,7 +4,7 @@
 
 > *See something, say something*
 
-**Version:** 5.6.0  
+**Version:** 5.8.0  
 **Stack:** Next.js 15 · React 19 · Supabase · Tailwind
 
 ---
@@ -14,7 +14,7 @@
 | Audience | Capabilities |
 |----------|----------------|
 | **Citizens** | Report, attach photos, track by BIKA ID, rate resolved cases |
-| **Officers** | Queue, atomic acknowledge, notes, SLA |
+| **Officers** | Queue, atomic acknowledge, on-duty toggle, notes, SLA |
 | **Admins** | Reassign, command centre, users, hotlines, system |
 
 ---
@@ -28,7 +28,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Health: `GET /api/health` → `5.6.0`
+Health: `GET /api/health` → `5.8.0`
 
 Gap tracker: [docs/GAP_CHECKLIST.md](docs/GAP_CHECKLIST.md)
 

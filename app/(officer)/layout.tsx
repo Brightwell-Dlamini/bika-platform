@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -12,10 +12,14 @@ import {
   Inbox,
   Users,
   Settings,
+  Radio,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
 import { useIncidentsRealtime } from '@/app/lib/api/hooks/useRealtime';
 import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
+import { apiFetch } from '@/app/lib/api/fetcher';
+import { qk } from '@/app/lib/api/queryKeys';
 import { ROLE_LABELS, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
 import { toast } from 'sonner';
 
@@ -23,6 +27,8 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const me = useOfficerMe();
+  const qc = useQueryClient();
+  const [dutyBusy, setDutyBusy] = useState(false);
 
   useIncidentsRealtime();
 
@@ -34,6 +40,24 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
       router.push('/login');
     } catch {
       toast.error('Could not sign out.');
+    }
+  };
+
+  const toggleDuty = async () => {
+    if (!me.data?.user) return;
+    const next = !me.data.user.onDuty;
+    setDutyBusy(true);
+    try {
+      await apiFetch('/api/officer/me', {
+        method: 'PATCH',
+        body: { onDuty: next },
+      });
+      toast.success(next ? 'On duty — eligible for auto-assign.' : 'Off duty.');
+      qc.invalidateQueries({ queryKey: qk.users.me() });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update duty.');
+    } finally {
+      setDutyBusy(false);
     }
   };
 
@@ -142,7 +166,26 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
             ))}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={toggleDuty}
+              disabled={dutyBusy}
+              title={user.onDuty ? 'On duty — click to go off duty' : 'Off duty — click to go on duty'}
+              aria-label={user.onDuty ? 'Go off duty' : 'Go on duty'}
+              className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition disabled:opacity-50 ${
+                user.onDuty
+                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
+              }`}
+            >
+              {dutyBusy ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Radio className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">{user.onDuty ? 'On duty' : 'Off duty'}</span>
+            </button>
             <div className="hidden sm:block text-right">
               <div className="text-xs font-bold text-white leading-tight">{user.name}</div>
               <div className="text-[10px] text-slate-500">{ROLE_LABELS[user.role]}</div>
@@ -171,7 +214,6 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
         {children}
       </main>
 
-      {/* Officer mobile bottom tabs */}
       <nav
         className="md:hidden fixed bottom-0 inset-x-0 z-50 border-t border-slate-800/90 bg-slate-950/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
         aria-label="Officer mobile"

@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Copy, Check, MapPin, Clock, User, Paperclip } from 'lucide-react';
+import { Copy, Check, MapPin, Clock, User, Paperclip, ExternalLink, Link2 } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Incident } from '@/app/types';
 import { statusLabel, statusColor } from '@/app/lib/statusLabels';
 
@@ -19,13 +20,29 @@ export function CaseHeader({ incident }: { incident: Incident }) {
     new Date(incident.slaDueAt) < new Date() &&
     !['closed', 'resolved', 'rejected'].includes(incident.status);
 
+  const trackPath = `/r/${encodeURIComponent(incident.id)}`;
+  const trackUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${trackPath}`
+      : trackPath;
+
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(incident.id);
       setCopied(true);
+      toast.success('Reference ID copied.');
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // ignore
+      toast.error('Could not copy.');
+    }
+  };
+
+  const handleCopyTrack = async () => {
+    try {
+      await navigator.clipboard.writeText(trackUrl);
+      toast.success('Citizen track link copied.');
+    } catch {
+      toast.error('Could not copy link.');
     }
   };
 
@@ -64,6 +81,26 @@ export function CaseHeader({ incident }: { incident: Incident }) {
             </span>
           )}
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleCopyTrack}
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-300 hover:border-yellow-500/50 hover:text-yellow-300 transition"
+        >
+          <Link2 className="w-3 h-3" />
+          Copy citizen track link
+        </button>
+        <a
+          href={trackPath}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-slate-300 hover:border-yellow-500/50 hover:text-yellow-300 transition"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Open citizen view
+        </a>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
