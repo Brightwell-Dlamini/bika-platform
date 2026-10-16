@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
@@ -46,9 +46,8 @@ export default function ReportPage() {
     enabled: step !== 'success',
   });
 
-  // Restore draft on first mount only
   const [restored, setRestored] = useState(false);
-  React.useEffect(() => {
+  useEffect(() => {
     if (restored || !draft.isRestored || !draft.data) return;
     setRestored(true);
     const d = draft.data;
@@ -62,10 +61,20 @@ export default function ReportPage() {
     }
   }, [draft, restored]);
 
+  // Keep the active step in view after advances (mobile-friendly)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const id = window.setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const main = document.getElementById('main-content');
+      main?.focus({ preventScroll: true });
+    }, 50);
+    return () => window.clearTimeout(id);
+  }, [step]);
+
   const submitMutation = useSubmitReport();
 
   const handleConfirmSubmit = async () => {
-    // Final guard: full schema validation before POST
     const parsed = zCitizenReportSubmission.safeParse({
       ...values,
       mode,
@@ -85,7 +94,6 @@ export default function ReportPage() {
         const ref = data.incident.id;
         setCreatedReference(ref);
 
-        // Save on device for "My Reports"
         rememberReport({
           id: ref,
           category: data.incident.category,
@@ -109,7 +117,7 @@ export default function ReportPage() {
 
   const handleTrackCurrent = () => {
     if (createdReference) {
-      router.push(`/r/${createdReference}`);
+      router.push(`/r/${encodeURIComponent(createdReference)}`);
     }
   };
 
@@ -181,10 +189,7 @@ export default function ReportPage() {
       )}
 
       {step === 'success' && createdReference && (
-        <SuccessStep
-          referenceId={createdReference}
-          onTrack={handleTrackCurrent}
-        />
+        <SuccessStep referenceId={createdReference} onTrack={handleTrackCurrent} />
       )}
     </div>
   );

@@ -2,6 +2,8 @@ import React from 'react';
 import Link from 'next/link';
 
 export function PublicFooter() {
+  const year = new Date().getFullYear();
+
   return (
     <footer className="bg-slate-900 border-t border-slate-800 py-8 px-4 text-center text-xs text-slate-400 space-y-4 mt-auto">
       <div className="font-bold text-slate-200 text-sm">
@@ -29,12 +31,15 @@ export function PublicFooter() {
         </Link>
       </nav>
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">
-        <span>Emergency: 999 · 800-BIKA</span>
+        <a href="tel:999" className="hover:text-red-300 transition font-semibold">
+          Emergency: 999
+        </a>
         <span aria-hidden="true">·</span>
         <span>See something, say something</span>
         <span aria-hidden="true">·</span>
         <span>Bona lokutsite, yisho lokutsite</span>
       </div>
+      <div className="text-[10px] text-slate-600">© {year} BIKA Platform · Kingdom of Eswatini</div>
     </footer>
   );
 }

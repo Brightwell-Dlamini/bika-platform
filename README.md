@@ -4,7 +4,7 @@
 
 > *See something, say something*
 
-**Version:** 5.9.0  
+**Version:** 6.0.0  
 **Stack:** Next.js 15 · React 19 · Supabase · Tailwind
 
 ---
@@ -28,7 +28,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Health: `GET /api/health` → `5.9.0`
+Health: `GET /api/health` → `6.0.0`
 
 Gap tracker: [docs/GAP_CHECKLIST.md](docs/GAP_CHECKLIST.md)
 

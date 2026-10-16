@@ -35,7 +35,7 @@ export function ReviewStep({
   onConfirm,
 }: ReviewStepProps) {
   return (
-    <div className="max-w-3xl mx-auto bg-slate-900 border border-yellow-500/30 rounded-[1.5rem] p-5 sm:p-7 space-y-5 shadow-2xl animate-fadeIn relative overflow-hidden">
+    <div className="max-w-3xl mx-auto bg-slate-900 border border-yellow-500/30 rounded-[1.5rem] p-5 sm:p-7 space-y-5 shadow-2xl animate-fadeIn relative overflow-hidden pb-28 sm:pb-7">
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(234,179,8,0.08),_transparent_50%)]" />
 
       <div className="relative flex items-start space-x-3">
@@ -101,12 +101,13 @@ export function ReviewStep({
         </div>
       )}
 
-      <div className="relative flex flex-col-reverse sm:flex-row gap-2 sm:justify-end pt-1">
+      {/* Desktop actions */}
+      <div className="relative hidden sm:flex flex-row gap-2 justify-end pt-1">
         <button
           type="button"
           onClick={onEdit}
           disabled={submitting}
-          className="inline-flex items-center justify-center space-x-1.5 px-4 py-3 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition touch-manipulation"
+          className="inline-flex items-center justify-center space-x-1.5 px-4 py-3 rounded-xl bg-slate-800 text-slate-200 text-xs font-bold hover:bg-slate-700 disabled:opacity-50 transition"
         >
           <Pencil className="w-3.5 h-3.5" />
           <span>Edit details</span>
@@ -115,11 +116,35 @@ export function ReviewStep({
           type="button"
           onClick={onConfirm}
           disabled={submitting}
-          className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-yellow-500 text-slate-950 text-xs font-extrabold hover:brightness-110 disabled:opacity-60 shadow-lg shadow-yellow-500/25 transition touch-manipulation"
+          className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-xl bg-yellow-500 text-slate-950 text-xs font-extrabold hover:brightness-110 disabled:opacity-60 shadow-lg shadow-yellow-500/25 transition"
         >
           {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
           <span>{submitting ? 'Submitting…' : 'Confirm & submit'}</span>
         </button>
+      </div>
+
+      {/* Mobile sticky submit above bottom nav */}
+      <div className="sm:hidden fixed bottom-[4.5rem] inset-x-0 z-40 px-4 pointer-events-none">
+        <div className="max-w-3xl mx-auto flex gap-2 pointer-events-auto pb-[env(safe-area-inset-bottom)]">
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={submitting}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-3.5 rounded-xl bg-slate-800/95 backdrop-blur border border-slate-700 text-slate-200 text-xs font-bold disabled:opacity-50 touch-manipulation shadow-lg"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={submitting}
+            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-yellow-500 text-slate-950 text-xs font-extrabold disabled:opacity-60 shadow-lg shadow-yellow-500/30 touch-manipulation"
+          >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            <span>{submitting ? 'Submitting…' : 'Confirm & submit'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );

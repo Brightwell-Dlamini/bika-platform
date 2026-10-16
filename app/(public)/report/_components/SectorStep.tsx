@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Bus, Utensils, ArrowRight, Search, ShieldCheck, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import {
+  Bus,
+  Utensils,
+  ArrowRight,
+  Search,
+  ShieldCheck,
+  ChevronDown,
+  ChevronUp,
+  Zap,
+  Phone,
+} from 'lucide-react';
 import type { Mode } from '@/app/types';
 
 interface SectorStepProps {
@@ -14,6 +24,23 @@ export function SectorStep({ onSelect, onTrack }: SectorStepProps) {
 
   return (
     <div className="space-y-8 animate-fadeIn">
+      {/* Life-threatening emergencies — always visible */}
+      <a
+        href="tel:999"
+        className="flex items-center gap-3 rounded-2xl border border-red-500/40 bg-red-950/40 px-4 py-3.5 text-left shadow-lg shadow-red-950/20 hover:bg-red-950/60 active:scale-[0.99] transition touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-400"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white shadow-md">
+          <Phone className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-black text-red-100">Life-threatening emergency?</span>
+          <span className="block text-[11px] text-red-200/80 mt-0.5">
+            Call <strong className="text-white">999</strong> now — do not wait for an online report.
+          </span>
+        </span>
+        <span className="text-xs font-black text-red-100 tabular-nums">999</span>
+      </a>
+
       <div className="relative rounded-[1.75rem] p-6 sm:p-12 border border-slate-800/80 shadow-2xl overflow-hidden text-center bg-slate-900">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(234,179,8,0.14),_transparent_55%)] pointer-events-none" />
         <div className="absolute -right-16 -bottom-16 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -193,6 +220,7 @@ function SectorCard({
       className={`group relative rounded-[1.5rem] overflow-hidden border-2 border-slate-800 ${accentColor} cursor-pointer shadow-2xl transition-all duration-200 hover:scale-[1.015] active:scale-[0.98] hover:shadow-2xl bg-slate-900 text-left w-full touch-manipulation focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500`}
     >
       <div className="h-52 sm:h-56 relative overflow-hidden pointer-events-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt=""
