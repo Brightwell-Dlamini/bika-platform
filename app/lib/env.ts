@@ -25,6 +25,13 @@ const serverSchema = z.object({
   SUPABASE_ANON_KEY: z.string().min(20).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20).optional(),
 
+  // Cron / ops
+  CRON_SECRET: z.string().min(16).optional(),
+
+  // Shared rate limit (Upstash Redis REST)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(10).optional(),
+
   // Notification channels (all optional — features degrade gracefully)
   NOTIFY_WEBHOOK_URL: z.string().url().optional(),
   RESEND_API_KEY: z.string().min(10).optional(),
@@ -74,6 +81,13 @@ function loadServerEnv(): ServerEnv {
       console.warn(
         '[BIKA/env] SUPABASE_SERVICE_ROLE_KEY missing in production. ' +
         'Admin routes (/api/admin/*) will return 503.'
+      );
+    }
+
+    if (!env.CRON_SECRET && !env.USSD_WEBHOOK_SECRET) {
+      console.warn(
+        '[BIKA/env] CRON_SECRET missing in production. ' +
+        'SLA cron (/api/cron/sla-check) will reject authenticated runs until set.'
       );
     }
 
