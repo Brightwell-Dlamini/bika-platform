@@ -191,7 +191,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
               <div className="text-[10px] text-slate-500">{ROLE_LABELS[user.role]}</div>
             </div>
             <Link
-              href="/officer/profile"
+              href="/profile"
               className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden hover:border-yellow-500/50 transition"
               title="Profile"
               aria-label="Edit profile"

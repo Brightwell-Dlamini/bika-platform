@@ -57,7 +57,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const user = me.data.user;
 
-  // Officers get redirected to their own shell
   if (!canRunWork(user.role)) {
     router.replace('/officer');
     return null;
@@ -84,47 +83,52 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </div>
             </Link>
           </div>
-<nav className="hidden md:flex items-center gap-1 text-xs font-semibold">
-  <AdminNavLink href="/admin" active={pathname === '/admin'}>
-    Dashboard
-  </AdminNavLink>
-  <AdminNavLink href="/admin/users" active={pathname?.startsWith('/admin/users')}>
-    Users
-  </AdminNavLink>
-  <AdminNavLink href="/admin/hotlines" active={pathname?.startsWith('/admin/hotlines')}>
-    Hotlines
-  </AdminNavLink>
-  <AdminNavLink href="/command" active={pathname?.startsWith('/command')}>
-    Command Centre
-  </AdminNavLink>
-  <AdminNavLink href="/analytics" active={pathname?.startsWith('/analytics')}>
-    Analytics
-  </AdminNavLink>
-  {isSuper && (
-    <AdminNavLink href="/admin/system" active={pathname?.startsWith('/admin/system')}>
-      System
-    </AdminNavLink>
-  )}
-  <Link
-    href="/officer"
-    className="ml-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-yellow-400 transition-colors"
-  >
-    ← Officer view
-  </Link>
-</nav>
+          <nav className="hidden md:flex items-center gap-1 text-xs font-semibold">
+            <AdminNavLink href="/admin" active={pathname === '/admin'}>
+              Dashboard
+            </AdminNavLink>
+            <AdminNavLink href="/admin/users" active={pathname?.startsWith('/admin/users')}>
+              Users
+            </AdminNavLink>
+            <AdminNavLink href="/admin/hotlines" active={pathname?.startsWith('/admin/hotlines')}>
+              Hotlines
+            </AdminNavLink>
+            <AdminNavLink href="/command" active={pathname?.startsWith('/command')}>
+              Command Centre
+            </AdminNavLink>
+            <AdminNavLink href="/analytics" active={pathname?.startsWith('/analytics')}>
+              Analytics
+            </AdminNavLink>
+            {isSuper && (
+              <AdminNavLink href="/admin/system" active={pathname?.startsWith('/admin/system')}>
+                System
+              </AdminNavLink>
+            )}
+            <Link
+              href="/officer"
+              className="ml-2 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-yellow-400 transition-colors"
+            >
+              ← Officer view
+            </Link>
+          </nav>
 
           <div className="flex items-center gap-3">
             <div className="hidden sm:block text-right">
               <div className="text-xs font-bold text-white leading-tight">{user.name}</div>
               <div className="text-[10px] text-slate-500">{ROLE_LABELS[user.role]}</div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden">
+            <Link
+              href="/profile"
+              className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden hover:border-yellow-500/50 transition"
+              title="Profile"
+              aria-label="Edit profile"
+            >
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 <UserIcon className="w-4 h-4" />
               )}
-            </div>
+            </Link>
             <button
               onClick={handleSignOut}
               className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800"
