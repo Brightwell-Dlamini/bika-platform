@@ -14,9 +14,12 @@ import {
   X,
   ExternalLink,
   Satellite,
+  Clock,
+  Flame,
 } from 'lucide-react';
 import type { Incident, Region, Severity } from '@/app/types';
 import type { Map as LeafletMap, LatLngExpression, Layer } from 'leaflet';
+import type { MapDisplayMode, OverlayPin } from './MapOverlayLayers';
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((m) => m.MapContainer),
@@ -30,12 +33,7 @@ const GeoJSON = dynamic(
   () => import('react-leaflet').then((m) => m.GeoJSON),
   { ssr: false }
 );
-const CircleMarker = dynamic(
-  () => import('react-leaflet').then((m) => m.CircleMarker),
-  { ssr: false }
-);
-const Circle = dynamic(() => import('react-leaflet').then((m) => m.Circle), { ssr: false });
-const Popup = dynamic(() => import('react-leaflet').then((m) => m.Popup), { ssr: false });
+const MapOverlayLayers = dynamic(() => import('./MapOverlayLayers'), { ssr: false });
 
 const REGION_CENTROIDS: Record<Region, { lat: number; lng: number }> = {
   Hhohho: { lat: -26.05, lng: 31.15 },
@@ -51,7 +49,6 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   LOW: '#38bdf8',
 };
 
-const RESOLVED_COLOR = '#10b981';
 const ESWATINI_CENTER: [number, number] = [-26.5225, 31.4659];
 const DEFAULT_ZOOM = 8;
 
@@ -68,20 +65,23 @@ const BASEMAPS = {
 
 type BasemapKey = keyof typeof BASEMAPS;
 
+export type TimeWindow = '1h' | '6h' | '24h' | '7d' | 'all';
+
+const TIME_WINDOWS: { key: TimeWindow; label: string; ms: number | null }[] = [
+  { key: '1h', label: '1h', ms: 60 * 60 * 1000 },
+  { key: '6h', label: '6h', ms: 6 * 60 * 60 * 1000 },
+  { key: '24h', label: '24h', ms: 24 * 60 * 60 * 1000 },
+  { key: '7d', label: '7d', ms: 7 * 24 * 60 * 60 * 1000 },
+  { key: 'all', label: 'All', ms: null },
+];
+
 interface MapPanelProps {
   incidents: Incident[];
   isLoading: boolean;
   selectedIncidentId: string | null;
-  onSelectIncident: (id: string) => void;
+  onSelectIncident: (id: string | null) => void;
   onRegionFilter?: (region: Region | null) => void;
   activeRegion?: string | null;
-}
-
-interface Pin {
-  incident: Incident;
-  lat: number;
-  lng: number;
-  isApprox: boolean;
 }
 
 function isOpen(status: Incident['status']) {
@@ -100,6 +100,14 @@ function jitterApprox(region: Region, index: number): { lat: number; lng: number
   };
 }
 
+function withinWindow(iso: string, window: TimeWindow): boolean {
+  const def = TIME_WINDOWS.find((t) => t.key === window);
+  if (!def || def.ms == null) return true;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return true;
+  return Date.now() - t <= def.ms;
+}
+
 export function MapPanel({
   incidents,
   isLoading,
@@ -109,7 +117,6 @@ export function MapPanel({
   activeRegion,
 }: MapPanelProps) {
   const mapRef = useRef<LeafletMap | null>(null);
-  const shellRef = useRef<HTMLDivElement | null>(null);
   const [geoData, setGeoData] = useState<GeoJSON.FeatureCollection | null>(null);
   const [hovered, setHovered] = useState<Incident | null>(null);
   const [leafletReady, setLeafletReady] = useState(false);
@@ -120,16 +127,15 @@ export function MapPanel({
   const [showGpsOnly, setShowGpsOnly] = useState(false);
   const [showRegions, setShowRegions] = useState(true);
   const [showLayers, setShowLayers] = useState(false);
-  const [pulse, setPulse] = useState(0);
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('24h');
+  const [displayMode, setDisplayMode] = useState<MapDisplayMode>('both');
 
   useEffect(() => {
-    void import('leaflet/dist/leaflet.css').then(() => setLeafletReady(true));
-  }, []);
-
-  // Subtle pulse tick for critical rings
-  useEffect(() => {
-    const id = window.setInterval(() => setPulse((p) => p + 1), 1200);
-    return () => window.clearInterval(id);
+    void Promise.all([
+      import('leaflet/dist/leaflet.css'),
+      import('leaflet.markercluster/dist/MarkerCluster.css'),
+      import('leaflet.markercluster/dist/MarkerCluster.Default.css'),
+    ]).then(() => setLeafletReady(true));
   }, []);
 
   useEffect(() => {
@@ -159,30 +165,23 @@ export function MapPanel({
           setFullscreen(false);
           return;
         }
-        onSelectIncident('');
-        // parent should treat '' as clear — fix via null
+        if (selectedIncidentId) onSelectIncident(null);
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [fullscreen, onSelectIncident]);
-
-  // Clear selection with Escape properly
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && selectedIncidentId) {
-        onSelectIncident(null as unknown as string);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [selectedIncidentId, onSelectIncident]);
+  }, [fullscreen, selectedIncidentId, onSelectIncident]);
 
   useEffect(() => {
     if (!fullscreen) return;
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 120);
     return () => clearTimeout(t);
   }, [fullscreen]);
+
+  const timedIncidents = useMemo(
+    () => incidents.filter((i) => withinWindow(i.createdAt, timeWindow)),
+    [incidents, timeWindow]
+  );
 
   const regionOpenCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -191,20 +190,20 @@ export function MapPanel({
       Shiselweni: 0,
       Lubombo: 0,
     };
-    for (const i of incidents) {
+    for (const i of timedIncidents) {
       if (isOpen(i.status) && i.region in counts) counts[i.region] += 1;
     }
     return counts;
-  }, [incidents]);
+  }, [timedIncidents]);
 
   const maxRegionOpen = useMemo(
     () => Math.max(1, ...Object.values(regionOpenCounts)),
     [regionOpenCounts]
   );
 
-  const allPins: Pin[] = useMemo(() => {
+  const allPins: OverlayPin[] = useMemo(() => {
     const approxIndex: Record<string, number> = {};
-    return incidents.map((incident) => {
+    return timedIncidents.map((incident) => {
       const hasGps =
         incident.coordinates &&
         typeof incident.coordinates.lat === 'number' &&
@@ -227,7 +226,7 @@ export function MapPanel({
       const j = jitterApprox(region, idx);
       return { incident, lat: j.lat, lng: j.lng, isApprox: true };
     });
-  }, [incidents]);
+  }, [timedIncidents]);
 
   const pins = useMemo(() => {
     return allPins.filter(({ incident, isApprox }) => {
@@ -307,34 +306,20 @@ export function MapPanel({
       );
       leafletLayer.on('click', () => {
         if (!onRegionFilter) return;
-        if (name in REGION_CENTROIDS) {
-          onRegionFilter(name as Region);
-        }
+        if (name in REGION_CENTROIDS) onRegionFilter(name as Region);
       });
     },
     [regionOpenCounts, onRegionFilter]
   );
 
-  const openCount = incidents.filter((i) => isOpen(i.status)).length;
-  const criticalCount = incidents.filter(
+  const openCount = timedIncidents.filter((i) => isOpen(i.status)).length;
+  const criticalCount = timedIncidents.filter(
     (i) => i.severity === 'CRITICAL' && isOpen(i.status)
   ).length;
   const gpsCount = allPins.filter((p) => !p.isApprox).length;
 
-  const clearSelection = () => onSelectIncident(null as unknown as string);
-
-  // Fix: parent uses string | null — update page to accept null. For now pass empty and handle in page.
-  const select = (id: string | null) => {
-    if (id === null) {
-      onSelectIncident('' as string);
-      return;
-    }
-    onSelectIncident(id);
-  };
-
   return (
     <div
-      ref={shellRef}
       className={`relative w-full h-full bg-[#05080f] ${
         fullscreen ? 'fixed inset-0 z-[80]' : ''
       }`}
@@ -381,6 +366,9 @@ export function MapPanel({
           <span>
             <span className="text-slate-300 font-bold">{gpsCount}</span> GPS
           </span>
+          <span className="text-slate-500">
+            window <span className="text-yellow-400/90 font-bold">{timeWindow}</span>
+          </span>
         </div>
       </div>
 
@@ -402,10 +390,6 @@ export function MapPanel({
               <span>{s}</span>
             </div>
           ))}
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-300 pt-1 border-t border-white/10">
-            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RESOLVED_COLOR }} />
-            <span>Resolved</span>
-          </div>
         </div>
         <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 mb-1.5">
           Open by region
@@ -433,9 +417,34 @@ export function MapPanel({
 
       {/* Layer panel */}
       {showLayers && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-2xl border border-white/10 bg-black/85 backdrop-blur-md p-3 shadow-2xl w-[min(100%,280px)]">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 rounded-2xl border border-white/10 bg-black/85 backdrop-blur-md p-3 shadow-2xl w-[min(100%,300px)]">
           <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 mb-2">
-            Map layers
+            Display mode
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 mb-3">
+            {(
+              [
+                { key: 'clusters', label: 'Clusters' },
+                { key: 'heat', label: 'Heat' },
+                { key: 'both', label: 'Both' },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => setDisplayMode(m.key)}
+                className={`text-[10px] font-bold py-1.5 rounded-lg border transition ${
+                  displayMode === m.key
+                    ? 'bg-yellow-500 text-slate-950 border-yellow-400'
+                    : 'bg-white/5 text-slate-300 border-white/10'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 mb-2">
+            Filters
           </div>
           <div className="grid grid-cols-2 gap-1.5">
             <LayerToggle label="Open only" on={showOpenOnly} set={setShowOpenOnly} />
@@ -452,7 +461,7 @@ export function MapPanel({
                 className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg border transition ${
                   basemap === key
                     ? 'bg-yellow-500 text-slate-950 border-yellow-400'
-                    : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
+                    : 'bg-white/5 text-slate-300 border-white/10'
                 }`}
               >
                 {BASEMAPS[key].label}
@@ -461,6 +470,35 @@ export function MapPanel({
           </div>
         </div>
       )}
+
+      {/* Time scrubber */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md px-2 py-1.5 shadow-2xl flex items-center gap-1">
+        <Clock className="w-3.5 h-3.5 text-slate-500 ml-1" />
+        {TIME_WINDOWS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTimeWindow(t.key)}
+            className={`min-w-[2.25rem] px-2.5 py-1.5 rounded-xl text-[10px] font-black transition ${
+              timeWindow === t.key
+                ? 'bg-yellow-500 text-slate-950 shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className="w-px h-5 bg-white/10 mx-0.5" />
+        <button
+          type="button"
+          onClick={() => setDisplayMode((m) => (m === 'heat' ? 'clusters' : m === 'clusters' ? 'both' : 'heat'))}
+          title="Cycle display mode"
+          className="px-2 py-1.5 rounded-xl text-[10px] font-bold text-orange-300 hover:bg-white/5 inline-flex items-center gap-1"
+        >
+          <Flame className="w-3 h-3" />
+          {displayMode}
+        </button>
+      </div>
 
       {/* Controls */}
       <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
@@ -521,11 +559,7 @@ export function MapPanel({
             mapRef.current = instance;
           }}
         >
-          <TileLayer
-            key={basemap}
-            attribution='&copy; OSM &copy; CARTO'
-            url={BASEMAPS[basemap].url}
-          />
+          <TileLayer key={basemap} attribution="&copy; OSM &copy; CARTO" url={BASEMAPS[basemap].url} />
 
           {showRegions && geoData && (
             <GeoJSON
@@ -536,67 +570,13 @@ export function MapPanel({
             />
           )}
 
-          {pins.map(({ incident, lat, lng, isApprox }) => {
-            const color =
-              incident.status === 'resolved' || incident.status === 'closed'
-                ? RESOLVED_COLOR
-                : SEVERITY_COLOR[incident.severity];
-            const isSelected = incident.id === selectedIncidentId;
-            const isCritical =
-              incident.severity === 'CRITICAL' && isOpen(incident.status);
-            // pulse drives opacity/radius via remount key fragment
-            const pulsePhase = pulse % 2;
-
-            return (
-              <React.Fragment key={incident.id}>
-                {isCritical && (
-                  <Circle
-                    center={[lat, lng]}
-                    radius={isSelected ? 900 + pulsePhase * 200 : 700 + pulsePhase * 180}
-                    pathOptions={{
-                      color: '#ef4444',
-                      weight: 1,
-                      opacity: pulsePhase ? 0.15 : 0.35,
-                      fillColor: '#ef4444',
-                      fillOpacity: pulsePhase ? 0.04 : 0.1,
-                    }}
-                    eventHandlers={{
-                      click: () => select(incident.id),
-                    }}
-                  />
-                )}
-                <CircleMarker
-                  center={[lat, lng]}
-                  radius={isSelected ? 13 : isCritical ? 10 : isApprox ? 7 : 8}
-                  pathOptions={{
-                    fillColor: color,
-                    color: isSelected ? '#fbbf24' : isApprox ? color : '#ffffff',
-                    weight: isSelected ? 3 : isApprox ? 1.5 : 2,
-                    fillOpacity: isApprox ? 0.55 : 0.92,
-                    opacity: 0.95,
-                    dashArray: isApprox ? '2 3' : undefined,
-                  }}
-                  eventHandlers={{
-                    click: () => select(incident.id),
-                    mouseover: () => setHovered(incident),
-                    mouseout: () => setHovered((h) => (h?.id === incident.id ? null : h)),
-                  }}
-                >
-                  <Popup>
-                    <div className="text-xs min-w-[190px]">
-                      <div className="font-mono font-bold text-amber-600">{incident.id}</div>
-                      <div className="font-semibold text-slate-900">{incident.category}</div>
-                      <div className="text-slate-600">{incident.location}</div>
-                      <div className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
-                        {incident.severity} · {incident.status}
-                        {isApprox ? ' · approx region' : ' · GPS'}
-                      </div>
-                    </div>
-                  </Popup>
-                </CircleMarker>
-              </React.Fragment>
-            );
-          })}
+          <MapOverlayLayers
+            pins={pins}
+            mode={displayMode}
+            selectedIncidentId={selectedIncidentId}
+            onSelectIncident={onSelectIncident}
+            onHover={setHovered}
+          />
         </MapContainer>
       )}
 
@@ -607,9 +587,8 @@ export function MapPanel({
         </div>
       )}
 
-      {/* Selected dock */}
       {selected && (
-        <div className="absolute bottom-3 left-3 right-14 max-w-lg z-10 rounded-2xl border border-yellow-500/30 bg-black/85 backdrop-blur-md p-3.5 shadow-2xl">
+        <div className="absolute bottom-16 left-3 right-14 max-w-lg z-10 rounded-2xl border border-yellow-500/30 bg-black/85 backdrop-blur-md p-3.5 shadow-2xl">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-[10px]">
@@ -631,7 +610,7 @@ export function MapPanel({
             </div>
             <button
               type="button"
-              onClick={() => select(null)}
+              onClick={() => onSelectIncident(null)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10"
               aria-label="Clear selection"
             >
@@ -658,7 +637,7 @@ export function MapPanel({
       )}
 
       {!selected && hovered && (
-        <div className="absolute bottom-3 left-3 right-14 max-w-md rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md p-3.5 shadow-2xl z-10 pointer-events-none">
+        <div className="absolute bottom-16 left-3 right-14 max-w-md rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md p-3.5 shadow-2xl z-10 pointer-events-none">
           <div className="flex items-center justify-between gap-2 text-[10px] mb-1">
             <span className="font-mono text-yellow-400 font-bold">{hovered.id}</span>
             <span className="text-slate-400 font-semibold">
@@ -687,8 +666,37 @@ export function MapPanel({
           color: #64748b !important;
           font-size: 9px !important;
         }
-        .map-ops .leaflet-control-attribution a {
-          color: #94a3b8 !important;
+        .bika-cluster-wrap {
+          background: transparent !important;
+          border: none !important;
+        }
+        .bika-cluster {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 9999px;
+          font-weight: 800;
+          font-size: 11px;
+          color: #0f172a;
+          background: linear-gradient(135deg, #fbbf24, #f59e0b);
+          border: 2px solid rgba(255, 255, 255, 0.35);
+          box-shadow: 0 0 0 4px rgba(234, 179, 8, 0.2), 0 8px 24px rgba(0, 0, 0, 0.45);
+        }
+        .bika-cluster--sm {
+          width: 34px;
+          height: 34px;
+        }
+        .bika-cluster--md {
+          width: 42px;
+          height: 42px;
+          font-size: 12px;
+        }
+        .bika-cluster--lg {
+          width: 52px;
+          height: 52px;
+          font-size: 13px;
+          background: linear-gradient(135deg, #f97316, #ef4444);
+          color: #fff;
         }
       `}</style>
     </div>
