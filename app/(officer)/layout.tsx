@@ -145,7 +145,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-3">
           <Link href="/officer" className="flex items-center gap-2.5 shrink-0 group">
-            <div className="w-9 h-9 rounded-xl bg-slate-900 border border-yellow-500/50 p-0.5 shadow-md shadow-yellow-500/10 group-hover:border-yellow-400 transition">
+            <div className="w-9 h-9 shrink-0">
               <img src="/Bika.png" alt="" className="w-full h-full object-contain" />
             </div>
             <div className="hidden sm:block">
@@ -190,7 +190,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
               <div className="text-xs font-bold text-white leading-tight">{user.name}</div>
               <div className="text-[10px] text-slate-500">{ROLE_LABELS[user.role]}</div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden ring-2 ring-slate-800">
+            <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden">
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
