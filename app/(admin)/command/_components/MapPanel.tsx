@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { Loader2, MapPin, RotateCcw } from 'lucide-react';
+import { Loader2, MapPin, RotateCcw, Crosshair } from 'lucide-react';
 import type { Incident, Region, Severity } from '@/app/types';
+import type { Map as LeafletMap, LatLngExpression } from 'leaflet';
 
-// Leaflet must be dynamic — it touches window on import
 const MapContainer = dynamic(
   () => import('react-leaflet').then((m) => m.MapContainer),
   { ssr: false }
@@ -23,7 +23,6 @@ const CircleMarker = dynamic(
   { ssr: false }
 );
 const Popup = dynamic(() => import('react-leaflet').then((m) => m.Popup), { ssr: false });
-const Tooltip = dynamic(() => import('react-leaflet').then((m) => m.Tooltip), { ssr: false });
 
 const REGION_CENTROIDS: Record<Region, { lat: number; lng: number }> = {
   Hhohho: { lat: -26.05, lng: 31.15 },
@@ -33,13 +32,15 @@ const REGION_CENTROIDS: Record<Region, { lat: number; lng: number }> = {
 };
 
 const SEVERITY_COLOR: Record<Severity, string> = {
-  CRITICAL: '#dc2626',
+  CRITICAL: '#ef4444',
   HIGH: '#f97316',
-  MEDIUM: '#fbbf24',
-  LOW: '#0ea5e9',
+  MEDIUM: '#eab308',
+  LOW: '#38bdf8',
 };
 
 const RESOLVED_COLOR = '#10b981';
+const ESWATINI_CENTER: [number, number] = [-26.5225, 31.4659];
+const DEFAULT_ZOOM = 8;
 
 interface MapPanelProps {
   incidents: Incident[];
@@ -48,14 +49,46 @@ interface MapPanelProps {
   onSelectIncident: (id: string) => void;
 }
 
+interface Pin {
+  incident: Incident;
+  lat: number;
+  lng: number;
+  isApprox: boolean;
+}
+
+function isOpen(status: Incident['status']) {
+  return !['resolved', 'closed', 'rejected'].includes(status);
+}
+
+/** Deterministic jitter so approximate region pins don't stack. */
+function jitterApprox(region: Region, index: number): { lat: number; lng: number } {
+  const base = REGION_CENTROIDS[region];
+  const ring = Math.floor(index / 8);
+  const slot = index % 8;
+  const angle = (slot / 8) * Math.PI * 2 + ring * 0.35;
+  const radius = 0.035 + ring * 0.028;
+  return {
+    lat: base.lat + Math.sin(angle) * radius,
+    lng: base.lng + Math.cos(angle) * radius * 1.15,
+  };
+}
+
 export function MapPanel({
   incidents,
   isLoading,
   selectedIncidentId,
   onSelectIncident,
 }: MapPanelProps) {
-  const [geoData, setGeoData] = useState<unknown>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const [geoData, setGeoData] = useState<GeoJSON.FeatureCollection | null>(null);
   const [hovered, setHovered] = useState<Incident | null>(null);
+  const [leafletReady, setLeafletReady] = useState(false);
+
+  // Client-only Leaflet CSS
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    void import('leaflet/dist/leaflet.css').then(() => setLeafletReady(true));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -63,12 +96,12 @@ export function MapPanel({
       try {
         const res = await fetch('/geo/eswatini-regions.json', { cache: 'force-cache' });
         if (res.ok) {
-          const data = await res.json();
+          const data = (await res.json()) as GeoJSON.FeatureCollection;
           if (!cancelled) setGeoData(data);
           return;
         }
       } catch {
-        /* fall through */
+        /* optional layer */
       }
       if (!cancelled) setGeoData(null);
     })();
@@ -77,138 +110,338 @@ export function MapPanel({
     };
   }, []);
 
-  const visible = useMemo(() => {
-    return incidents.map((i) => ({
-      incident: i,
-      coords: i.coordinates ?? REGION_CENTROIDS[i.region],
-      isApprox: !i.coordinates?.lat,
-    }));
+  const regionOpenCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      Hhohho: 0,
+      Manzini: 0,
+      Shiselweni: 0,
+      Lubombo: 0,
+    };
+    for (const i of incidents) {
+      if (isOpen(i.status) && i.region in counts) {
+        counts[i.region] += 1;
+      }
+    }
+    return counts;
   }, [incidents]);
 
-  const center: [number, number] = [-26.5225, 31.4659];
+  const maxRegionOpen = useMemo(
+    () => Math.max(1, ...Object.values(regionOpenCounts)),
+    [regionOpenCounts]
+  );
+
+  const pins: Pin[] = useMemo(() => {
+    const approxIndex: Record<string, number> = {};
+    return incidents.map((incident) => {
+      const hasGps =
+        incident.coordinates &&
+        typeof incident.coordinates.lat === 'number' &&
+        typeof incident.coordinates.lng === 'number';
+
+      if (hasGps) {
+        return {
+          incident,
+          lat: incident.coordinates!.lat,
+          lng: incident.coordinates!.lng,
+          isApprox: false,
+        };
+      }
+
+      const region = (incident.region in REGION_CENTROIDS
+        ? incident.region
+        : 'Manzini') as Region;
+      const idx = approxIndex[region] ?? 0;
+      approxIndex[region] = idx + 1;
+      const j = jitterApprox(region, idx);
+      return { incident, lat: j.lat, lng: j.lng, isApprox: true };
+    });
+  }, [incidents]);
+
+  const fitToPins = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    void import('leaflet').then((L) => {
+      if (pins.length === 0) {
+        map.setView(ESWATINI_CENTER, DEFAULT_ZOOM);
+        return;
+      }
+      const bounds = L.latLngBounds(pins.map((p) => [p.lat, p.lng] as LatLngExpression));
+      map.fitBounds(bounds.pad(0.22), { maxZoom: 11, animate: true });
+    });
+  }, [pins]);
+
+  // Fit when pin set changes meaningfully
+  const pinSignature = pins.map((p) => p.incident.id).join('|');
+  useEffect(() => {
+    if (!leafletReady || !mapRef.current) return;
+    const t = setTimeout(() => fitToPins(), 80);
+    return () => clearTimeout(t);
+  }, [pinSignature, leafletReady, fitToPins]);
+
+  // Fly to selection
+  useEffect(() => {
+    if (!selectedIncidentId || !mapRef.current) return;
+    const pin = pins.find((p) => p.incident.id === selectedIncidentId);
+    if (!pin) return;
+    mapRef.current.flyTo([pin.lat, pin.lng], Math.max(mapRef.current.getZoom(), 10), {
+      duration: 0.55,
+    });
+  }, [selectedIncidentId, pins]);
+
+  const geoStyle = useCallback(
+    (feature?: GeoJSON.Feature) => {
+      const name = String(feature?.properties?.shapeName ?? '');
+      const open = regionOpenCounts[name] ?? 0;
+      const t = open / maxRegionOpen;
+      const fillOpacity = 0.08 + t * 0.32;
+      return {
+        color: '#eab308',
+        weight: 1.25,
+        opacity: 0.55,
+        fillColor: open > 0 ? '#eab308' : '#1e293b',
+        fillOpacity,
+      };
+    },
+    [regionOpenCounts, maxRegionOpen]
+  );
+
+  const onEachRegion = useCallback(
+    (feature: GeoJSON.Feature, layer: { bindTooltip: (html: string, opts: object) => void }) => {
+      const name = String(feature.properties?.shapeName ?? 'Region');
+      const open = regionOpenCounts[name] ?? 0;
+      layer.bindTooltip(
+        `<div style="font:12px/1.3 system-ui,sans-serif">
+          <strong>${name}</strong><br/>
+          <span style="color:#94a3b8">${open} open case${open === 1 ? '' : 's'}</span>
+        </div>`,
+        { sticky: true, opacity: 0.95 }
+      );
+    },
+    [regionOpenCounts]
+  );
+
+  const openCount = incidents.filter((i) => isOpen(i.status)).length;
+  const criticalCount = incidents.filter(
+    (i) => i.severity === 'CRITICAL' && isOpen(i.status)
+  ).length;
+  const gpsCount = pins.filter((p) => !p.isApprox).length;
 
   return (
-    <div className="relative w-full h-full bg-slate-950">
-      {/* Loading overlay */}
+    <div className="relative w-full h-full bg-[#05080f]">
       {isLoading && (
-        <div className="absolute inset-0 z-20 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center">
+        <div className="absolute inset-0 z-20 bg-[#05080f]/70 backdrop-blur-sm flex items-center justify-center">
           <div className="flex items-center gap-2 text-slate-400 text-xs">
             <Loader2 className="w-4 h-4 animate-spin" />
-            Loading incidents…
+            Syncing map…
           </div>
         </div>
       )}
 
-      {/* Header badge */}
-      <div className="absolute top-3 left-3 z-10 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl px-3 py-2 shadow-xl">
+      {/* Top-left status */}
+      <div className="absolute top-3 left-3 z-10 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md px-3.5 py-2.5 shadow-2xl">
         <div className="flex items-center gap-2">
           <MapPin className="w-3.5 h-3.5 text-yellow-400" />
-          <span className="text-[11px] font-black uppercase tracking-wider text-white">
-            Eswatini Nationwide
+          <span className="text-[11px] font-black uppercase tracking-[0.14em] text-white">
+            Kingdom map
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">
-            {visible.length} pin{visible.length === 1 ? '' : 's'}
+        </div>
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-mono text-slate-400">
+          <span>
+            <span className="text-white font-bold">{pins.length}</span> pins
+          </span>
+          <span>
+            <span className="text-sky-300 font-bold">{openCount}</span> open
+          </span>
+          {criticalCount > 0 && (
+            <span>
+              <span className="text-red-400 font-bold">{criticalCount}</span> critical
+            </span>
+          )}
+          <span>
+            <span className="text-slate-300 font-bold">{gpsCount}</span> GPS
           </span>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="absolute top-3 right-3 z-10 bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl p-2.5 shadow-xl">
-        <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">
+      {/* Legend + region heat */}
+      <div className="absolute top-3 right-3 z-10 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md p-3 shadow-2xl min-w-[132px]">
+        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 mb-2">
           Severity
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 mb-3">
           {(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as Severity[]).map((s) => (
             <div key={s} className="flex items-center gap-1.5 text-[10px] text-slate-300">
               <span
-                className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: SEVERITY_COLOR[s] }}
+                className="w-2 h-2 rounded-full shadow-[0_0_6px_currentColor]"
+                style={{ backgroundColor: SEVERITY_COLOR[s], color: SEVERITY_COLOR[s] }}
               />
               <span>{s}</span>
             </div>
           ))}
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-300 pt-1 border-t border-slate-700/60">
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-300 pt-1 border-t border-white/10">
             <span className="w-2 h-2 rounded-full" style={{ backgroundColor: RESOLVED_COLOR }} />
             <span>Resolved</span>
           </div>
         </div>
+        <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500 mb-1.5">
+          Open by region
+        </div>
+        <div className="space-y-1">
+          {(Object.keys(REGION_CENTROIDS) as Region[]).map((r) => (
+            <div key={r} className="flex items-center justify-between gap-2 text-[10px]">
+              <span className="text-slate-400">{r}</span>
+              <span className="font-mono font-bold text-yellow-400/90">
+                {regionOpenCounts[r] ?? 0}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[9px] text-slate-600 mt-2 leading-snug">
+          Hollow ring = approximate (region centre)
+        </p>
       </div>
 
-      <MapContainer
-        center={center}
-        zoom={8}
-        scrollWheelZoom
-        style={{ width: '100%', height: '100%', background: '#0f172a' }}
-        className="z-0"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        />
+      {/* Controls */}
+      <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
+        <button
+          type="button"
+          onClick={fitToPins}
+          title="Fit to incidents"
+          className="w-9 h-9 rounded-xl border border-white/10 bg-black/70 backdrop-blur-md text-slate-300 hover:text-yellow-400 hover:border-yellow-500/40 flex items-center justify-center shadow-xl"
+        >
+          <Crosshair className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={() => mapRef.current?.setView(ESWATINI_CENTER, DEFAULT_ZOOM)}
+          title="Reset view"
+          className="w-9 h-9 rounded-xl border border-white/10 bg-black/70 backdrop-blur-md text-slate-300 hover:text-yellow-400 hover:border-yellow-500/40 flex items-center justify-center shadow-xl"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+      </div>
 
-        {geoData ? <GeoJSON data={geoData as never} /> : null}
+      {leafletReady && (
+        <MapContainer
+          center={ESWATINI_CENTER}
+          zoom={DEFAULT_ZOOM}
+          scrollWheelZoom
+          style={{ width: '100%', height: '100%', background: '#05080f' }}
+          className="z-0 map-ops"
+          ref={(instance) => {
+            mapRef.current = instance;
+          }}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; CARTO'
+            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          />
 
-        {visible.map(({ incident, coords, isApprox }) => {
-          const color =
-            incident.status === 'resolved' || incident.status === 'closed'
-              ? RESOLVED_COLOR
-              : SEVERITY_COLOR[incident.severity];
-          const isSelected = incident.id === selectedIncidentId;
-          const isCritical =
-            incident.severity === 'CRITICAL' &&
-            incident.status !== 'resolved' &&
-            incident.status !== 'closed';
+          {geoData && (
+            <GeoJSON
+              // remount when counts change so styles refresh
+              key={`regions-${Object.values(regionOpenCounts).join('-')}`}
+              data={geoData as never}
+              style={geoStyle as never}
+              onEachFeature={onEachRegion as never}
+            />
+          )}
 
-          return (
-            <CircleMarker
-              key={incident.id}
-              center={[coords.lat, coords.lng]}
-              radius={isSelected ? 12 : isCritical ? 9 : 7}
-              pathOptions={{
-                fillColor: color,
-                color: isSelected ? '#fbbf24' : isApprox ? '#94a3b8' : '#ffffff',
-                weight: isSelected ? 3 : 2,
-                fillOpacity: isApprox ? 0.75 : 0.95,
-              }}
-              eventHandlers={{
-                click: () => onSelectIncident(incident.id),
-                mouseover: () => setHovered(incident),
-                mouseout: () => setHovered(null),
-              }}
-            >
-              <Popup>
-                <div className="text-xs min-w-[180px]">
-                  <div className="font-mono font-bold text-yellow-600">{incident.id}</div>
-                  <div className="font-semibold">{incident.category}</div>
-                  <div className="text-slate-600">{incident.location}</div>
-                  <div className="mt-1 text-[10px] uppercase tracking-wide">
-                    {incident.severity} · {incident.status}
-                    {isApprox ? ' · region centre' : ''}
+          {pins.map(({ incident, lat, lng, isApprox }) => {
+            const color =
+              incident.status === 'resolved' || incident.status === 'closed'
+                ? RESOLVED_COLOR
+                : SEVERITY_COLOR[incident.severity];
+            const isSelected = incident.id === selectedIncidentId;
+            const isCritical =
+              incident.severity === 'CRITICAL' && isOpen(incident.status);
+
+            return (
+              <CircleMarker
+                key={incident.id}
+                center={[lat, lng]}
+                radius={isSelected ? 13 : isCritical ? 10 : isApprox ? 7 : 8}
+                pathOptions={{
+                  fillColor: color,
+                  color: isSelected ? '#fbbf24' : isApprox ? color : '#ffffff',
+                  weight: isSelected ? 3 : isApprox ? 1.5 : 2,
+                  fillOpacity: isApprox ? 0.55 : 0.92,
+                  opacity: 0.95,
+                  dashArray: isApprox ? '2 3' : undefined,
+                }}
+                eventHandlers={{
+                  click: () => onSelectIncident(incident.id),
+                  mouseover: () => setHovered(incident),
+                  mouseout: () => setHovered((h) => (h?.id === incident.id ? null : h)),
+                }}
+              >
+                <Popup>
+                  <div className="text-xs min-w-[190px]">
+                    <div className="font-mono font-bold text-amber-600">{incident.id}</div>
+                    <div className="font-semibold text-slate-900">{incident.category}</div>
+                    <div className="text-slate-600">{incident.location}</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
+                      {incident.severity} · {incident.status}
+                      {isApprox ? ' · approx region' : ' · GPS'}
+                    </div>
                   </div>
-                </div>
-              </Popup>
-            </CircleMarker>
-          );
-        })}
-      </MapContainer>
+                </Popup>
+              </CircleMarker>
+            );
+          })}
+        </MapContainer>
+      )}
 
-      {/* Hover preview */}
-      {hovered && !selectedIncidentId && (
-        <div className="absolute bottom-3 left-3 right-3 max-w-md bg-slate-900/95 backdrop-blur border border-slate-700 rounded-2xl p-3 shadow-2xl z-10 pointer-events-none">
-          <div className="flex items-center justify-between text-[10px] mb-1">
+      {!leafletReady && (
+        <div className="absolute inset-0 flex items-center justify-center text-slate-500 text-xs">
+          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          Loading map engine…
+        </div>
+      )}
+
+      {hovered && (
+        <div className="absolute bottom-3 left-3 right-14 max-w-md rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md p-3.5 shadow-2xl z-10 pointer-events-none">
+          <div className="flex items-center justify-between gap-2 text-[10px] mb-1">
             <span className="font-mono text-yellow-400 font-bold">{hovered.id}</span>
             <span className="text-slate-400 font-semibold">
               {hovered.region} · {hovered.mode}
             </span>
           </div>
           <div className="text-xs font-bold text-white truncate">
-            {hovered.category} — {hovered.location}
+            {hovered.category}
+            <span className="text-slate-500 font-normal"> — </span>
+            {hovered.location}
           </div>
-          <p className="text-[11px] text-slate-400 line-clamp-2 mt-0.5">
+          <p className="text-[11px] text-slate-400 line-clamp-2 mt-1 leading-relaxed">
             {hovered.description}
           </p>
+          <div className="mt-1.5 flex items-center gap-2 text-[9px] uppercase tracking-wider font-bold">
+            <span style={{ color: SEVERITY_COLOR[hovered.severity] }}>{hovered.severity}</span>
+            <span className="text-slate-600">·</span>
+            <span className="text-slate-400">{hovered.status.replace('_', ' ')}</span>
+          </div>
         </div>
       )}
+
+      <style jsx global>{`
+        .map-ops .leaflet-control-zoom a {
+          background: rgba(0, 0, 0, 0.75) !important;
+          color: #e2e8f0 !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        .map-ops .leaflet-control-zoom a:hover {
+          background: rgba(234, 179, 8, 0.2) !important;
+          color: #fbbf24 !important;
+        }
+        .map-ops .leaflet-control-attribution {
+          background: rgba(0, 0, 0, 0.55) !important;
+          color: #64748b !important;
+          font-size: 9px !important;
+        }
+        .map-ops .leaflet-control-attribution a {
+          color: #94a3b8 !important;
+        }
+      `}</style>
     </div>
   );
 }
