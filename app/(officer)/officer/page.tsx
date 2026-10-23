@@ -11,6 +11,7 @@ import {
   Loader2,
   UserPlus,
   Radio,
+  ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -68,16 +69,16 @@ export default function OfficerDashboardPage() {
 
   return (
     <div className="space-y-6 animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(234,179,8,0.08),_transparent_50%)]" />
-        <div className="relative flex flex-wrap items-center justify-between gap-3">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-7 shadow-2xl shadow-black/30">
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(234,179,8,0.1),_transparent_55%)]" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <span className="bg-yellow-500 text-slate-950 font-extrabold text-[10px] px-2.5 py-0.5 rounded uppercase tracking-wide">
+              <span className="bg-yellow-500 text-slate-950 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wide">
                 {ROLE_LABELS[user.role]}
               </span>
               <span
-                className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full ${
                   user.onDuty
                     ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40'
                     : 'bg-slate-800 text-slate-400 border border-slate-700'
@@ -87,8 +88,10 @@ export default function OfficerDashboardPage() {
                 {user.onDuty ? 'On duty' : 'Off duty'}
               </span>
             </div>
-            <h1 className="text-2xl font-black text-white mt-2">{user.name}</h1>
-            <p className="text-xs text-slate-400 mt-1">
+            <h1 className="text-2xl sm:text-3xl font-black text-white mt-3 tracking-tight">
+              {user.name}
+            </h1>
+            <p className="text-xs text-slate-400 mt-1.5">
               {user.department || 'Official'} · {user.agencyCode ?? 'Agency'} · {user.region}
             </p>
           </div>
@@ -121,7 +124,7 @@ export default function OfficerDashboardPage() {
             )}
             <Link
               href="/officer/queue"
-              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-yellow-500/15 transition"
+              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-4 py-2.5 rounded-xl shadow-lg shadow-yellow-500/20 transition"
             >
               <span>Open queue</span>
               <ArrowRight className="w-4 h-4" />
@@ -129,7 +132,7 @@ export default function OfficerDashboardPage() {
           </div>
         </div>
         {pressure && (
-          <div className="relative mt-4 flex items-start gap-2 bg-rose-950/40 border border-rose-500/40 rounded-xl px-3 py-2.5 text-[11px] text-rose-200">
+          <div className="relative mt-5 flex items-start gap-2 bg-rose-950/40 border border-rose-500/40 rounded-2xl px-3.5 py-3 text-[11px] text-rose-200">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
             <span>
               SLA pressure: {queue.slaOverdueMine} overdue on your cases
@@ -144,7 +147,7 @@ export default function OfficerDashboardPage() {
           </div>
         )}
         {!user.onDuty && (
-          <div className="relative mt-4 flex items-start gap-2 bg-slate-950/60 border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] text-slate-400">
+          <div className="relative mt-5 flex items-start gap-2 bg-slate-950/60 border border-slate-700 rounded-2xl px-3.5 py-3 text-[11px] text-slate-400">
             <Radio className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
               You are off duty. Auto-assignment will skip you until you go on duty.
@@ -193,14 +196,14 @@ export default function OfficerDashboardPage() {
         />
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/70 p-5 space-y-3 shadow-xl shadow-black/20">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-extrabold text-white">Your open cases</h2>
           <Link
             href="/officer/queue?scope=mine"
-            className="text-[10px] font-bold text-yellow-400 hover:underline"
+            className="text-[10px] font-bold text-yellow-400 hover:underline inline-flex items-center gap-0.5"
           >
-            View all
+            View all <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
         {mine.isLoading ? (
@@ -208,7 +211,7 @@ export default function OfficerDashboardPage() {
             <Loader2 className="w-4 h-4 animate-spin" /> Loading…
           </div>
         ) : recent.length === 0 ? (
-          <p className="text-xs text-slate-500 py-4 text-center">
+          <p className="text-xs text-slate-500 py-6 text-center">
             No open cases assigned to you. Check the{' '}
             <Link href="/officer/queue?scope=unassigned" className="text-yellow-400 hover:underline">
               unassigned queue
@@ -216,12 +219,12 @@ export default function OfficerDashboardPage() {
             .
           </p>
         ) : (
-          <ul className="divide-y divide-slate-800">
+          <ul className="divide-y divide-slate-800/80">
             {recent.slice(0, 5).map((inc) => (
               <li key={inc.id}>
                 <Link
                   href={`/officer/case/${inc.id}`}
-                  className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-slate-800/40 -mx-2 px-2 rounded-lg transition"
+                  className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-slate-800/40 -mx-2 px-2 rounded-xl transition"
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -238,7 +241,7 @@ export default function OfficerDashboardPage() {
                       {inc.category} · {inc.location}
                     </p>
                   </div>
-                  <span className="text-[10px] text-slate-500 shrink-0">
+                  <span className="text-[10px] text-slate-500 shrink-0 font-mono">
                     {new Date(inc.createdAt).toLocaleDateString()}
                   </span>
                 </Link>
@@ -248,9 +251,9 @@ export default function OfficerDashboardPage() {
         )}
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/50 p-6 space-y-3">
         <h2 className="text-sm font-extrabold text-white">Getting started</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
           <GuideCard
             title="Claim a case"
             body="Open the queue and open a case. Use Claim or Acknowledge to take ownership."
@@ -261,7 +264,7 @@ export default function OfficerDashboardPage() {
           />
           <GuideCard
             title="Duty status"
-            body="Toggle on duty so automation can assign critical cases to you when you are available."
+            body="Toggle on duty so automation can assign critical cases when you are available."
           />
         </div>
       </div>
@@ -287,24 +290,24 @@ function StatCard({
   return (
     <Link
       href={href}
-      className={`bg-slate-900 border rounded-xl p-4 shadow-lg transition-all duration-200 hover:-translate-y-0.5 group ${
+      className={`rounded-2xl border p-4 shadow-lg transition-all duration-200 hover:-translate-y-0.5 group ${
         emphasize
-          ? 'border-rose-500/50 hover:border-rose-400/70 shadow-rose-500/5'
-          : 'border-slate-800 hover:border-yellow-500/40'
+          ? 'border-rose-500/50 bg-rose-950/20 hover:border-rose-400/70 shadow-rose-500/5'
+          : 'border-slate-800/80 bg-slate-900/70 hover:border-yellow-500/40'
       }`}
     >
       <div className="flex items-center justify-between">
         <div className={`text-[10px] font-bold uppercase tracking-wider ${accent}`}>{label}</div>
         <Icon className={`w-4 h-4 ${accent} opacity-70 group-hover:opacity-100 transition`} />
       </div>
-      <div className="text-2xl font-extrabold text-white font-mono mt-2">{value}</div>
+      <div className="text-2xl font-extrabold text-white font-mono mt-2 tabular-nums">{value}</div>
     </Link>
   );
 }
 
 function GuideCard({ title, body }: { title: string; body: string }) {
   return (
-    <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
+    <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition">
       <div className="font-bold text-white mb-1">{title}</div>
       <p className="text-slate-400 leading-relaxed">{body}</p>
     </div>
