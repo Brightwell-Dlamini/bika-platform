@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, useState, Suspense, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { FilterBar } from './_components/FilterBar';
 import { KpiRail } from './_components/KpiRail';
@@ -37,6 +37,20 @@ function CommandPageInner() {
   );
 
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
+
+  const setRegionFilter = useCallback(
+    (region: Region | null) => {
+      const next = new URLSearchParams(sp.toString());
+      if (!region) next.delete('region');
+      else next.set('region', region);
+      router.replace(`/command?${next.toString()}`);
+    },
+    [router, sp]
+  );
+
+  const handleSelectIncident = useCallback((id: string | null) => {
+    setSelectedIncidentId(id && id.length > 0 ? id : null);
+  }, []);
 
   const incidents = useIncidents(filters);
 
@@ -92,7 +106,9 @@ function CommandPageInner() {
             incidents={sorted}
             isLoading={incidents.isLoading}
             selectedIncidentId={selectedIncidentId}
-            onSelectIncident={(id) => setSelectedIncidentId(id)}
+            onSelectIncident={handleSelectIncident}
+            onRegionFilter={setRegionFilter}
+            activeRegion={filters.region ?? null}
           />
         </section>
 
@@ -107,7 +123,7 @@ function CommandPageInner() {
             selectedIncidentId={selectedIncidentId}
             kiosk={kiosk}
             onSelectIncident={(id) => {
-              setSelectedIncidentId(id);
+              handleSelectIncident(id);
               if (!kiosk) router.push(`/officer/case/${id}`);
             }}
           />
