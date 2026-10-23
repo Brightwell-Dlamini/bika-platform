@@ -16,23 +16,24 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-7 animate-fadeIn">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
-              <BarChart3 className="w-4.5 h-4.5 text-yellow-400" />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Analytics</h1>
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl border border-yellow-500/25 bg-yellow-500/10 flex items-center justify-center shrink-0">
+            <BarChart3 className="w-5 h-5 text-yellow-400" />
           </div>
-          <p className="text-sm text-slate-400 mt-2 max-w-lg">
-            National incident intelligence and operational performance.
-          </p>
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tight">Analytics</h1>
+            <p className="text-sm text-slate-400 mt-1">
+              National intelligence · performance · pressure
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="bg-slate-900/90 border border-slate-800 p-1 rounded-2xl inline-flex gap-0.5 shadow-inner">
+          <div className="bg-[#0a0e16] border border-white/[0.06] p-1 rounded-2xl inline-flex gap-0.5">
             {ANALYTICS_RANGES.map((r) => (
               <button
                 key={r.key}
+                type="button"
                 onClick={() => setRange(r.key)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                   range === r.key
@@ -49,21 +50,20 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <KpiBox label="Total" value={kpis.data?.total ?? '—'} accent="text-white" glow="from-slate-800/80" />
-        <KpiBox label="Open" value={kpis.data?.open ?? '—'} accent="text-sky-300" glow="from-sky-950/50" />
-        <KpiBox label="Critical" value={kpis.data?.critical ?? '—'} accent="text-red-300" glow="from-red-950/40" />
-        <KpiBox label="SLA overdue" value={kpis.data?.slaOverdue ?? '—'} accent="text-rose-300" glow="from-rose-950/40" />
-        <KpiBox
-          label="Resolution rate"
+        <Kpi label="Total" value={kpis.data?.total ?? '—'} />
+        <Kpi label="Open" value={kpis.data?.open ?? '—'} tone="sky" />
+        <Kpi label="Critical" value={kpis.data?.critical ?? '—'} tone="red" />
+        <Kpi label="SLA overdue" value={kpis.data?.slaOverdue ?? '—'} tone="rose" />
+        <Kpi
+          label="Resolution"
           value={kpis.data ? `${kpis.data.resolutionRate}%` : '—'}
-          accent="text-emerald-300"
-          glow="from-emerald-950/40"
+          tone="emerald"
         />
-        <KpiBox label="Compliments" value={kpis.data?.compliments ?? '—'} accent="text-purple-300" glow="from-purple-950/40" />
+        <Kpi label="Compliments" value={kpis.data?.compliments ?? '—'} tone="violet" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <ChartCard title="Regional volume" subtitle="Total incidents by region">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Chart title="Regional volume" subtitle="Total incidents by region">
           {(regions.data ?? []).map((r) => (
             <BarChart.Bar
               key={r.region}
@@ -74,9 +74,9 @@ export default function AnalyticsPage() {
               valueClass="text-yellow-400"
             />
           ))}
-        </ChartCard>
+        </Chart>
 
-        <ChartCard title="Regional SLA overdue" subtitle="Cases past response deadline">
+        <Chart title="Regional SLA overdue" subtitle="Past response deadline">
           {(regions.data ?? []).map((r) => (
             <BarChart.Bar
               key={r.region}
@@ -87,9 +87,9 @@ export default function AnalyticsPage() {
               valueClass="text-rose-400"
             />
           ))}
-        </ChartCard>
+        </Chart>
 
-        <ChartCard title="Regional resolution rate" subtitle="Resolved or closed">
+        <Chart title="Resolution rate" subtitle="Resolved or closed">
           {(regions.data ?? []).map((r) => (
             <BarChart.Bar
               key={r.region}
@@ -101,9 +101,9 @@ export default function AnalyticsPage() {
               valueClass="text-emerald-400"
             />
           ))}
-        </ChartCard>
+        </Chart>
 
-        <ChartCard title="Regional response time" subtitle="Average minutes to first response">
+        <Chart title="Response time" subtitle="Avg minutes to first response">
           {(regions.data ?? []).map((r) => (
             <BarChart.Bar
               key={r.region}
@@ -115,19 +115,15 @@ export default function AnalyticsPage() {
               valueClass="text-sky-400"
             />
           ))}
-        </ChartCard>
+        </Chart>
       </div>
 
-      <div className="rounded-3xl border border-slate-800/80 bg-slate-900/70 p-5 sm:p-6 shadow-xl shadow-black/20">
+      <section className="rounded-[1.75rem] border border-white/[0.06] bg-[#0a0e16] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-2.5">
             <TrendingUp className="w-4 h-4 text-yellow-400" />
-            <h2 className="text-sm font-extrabold text-white uppercase tracking-wider">
-              Submission trend
-            </h2>
-            <span className="text-[11px] text-slate-500">
-              last {trends.data?.length ?? 0} days
-            </span>
+            <h2 className="text-sm font-black text-white uppercase tracking-[0.12em]">Trend</h2>
+            <span className="text-[11px] text-slate-500">last {trends.data?.length ?? 0} days</span>
           </div>
           <div className="flex items-center gap-4 text-[10px] text-slate-400">
             <span className="flex items-center gap-1.5">
@@ -145,39 +141,41 @@ export default function AnalyticsPage() {
         {trends.data && trends.data.length > 0 ? (
           <TrendBars data={trends.data} />
         ) : (
-          <div className="text-center py-10 text-slate-500 text-xs">No trend data.</div>
+          <div className="text-center py-12 text-slate-500 text-xs">No trend data.</div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
 
-function KpiBox({
+function Kpi({
   label,
   value,
-  accent,
-  glow,
+  tone = 'neutral',
 }: {
   label: string;
   value: number | string;
-  accent: string;
-  glow: string;
+  tone?: 'neutral' | 'sky' | 'red' | 'rose' | 'emerald' | 'violet';
 }) {
+  const tones = {
+    neutral: 'text-white',
+    sky: 'text-sky-300',
+    red: 'text-red-300',
+    rose: 'text-rose-300',
+    emerald: 'text-emerald-300',
+    violet: 'text-violet-300',
+  } as const;
   return (
-    <div
-      className={`relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br ${glow} to-slate-950 p-4 shadow-lg`}
-    >
-      <div className={`text-[10px] font-bold uppercase tracking-wider ${accent} opacity-90`}>
-        {label}
-      </div>
-      <div className="text-2xl sm:text-3xl font-black font-mono text-white mt-2 tabular-nums">
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0a0e16] p-4">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</div>
+      <div className={`mt-2 text-2xl sm:text-3xl font-black font-mono tabular-nums ${tones[tone]}`}>
         {value}
       </div>
     </div>
   );
 }
 
-function ChartCard({
+function Chart({
   title,
   subtitle,
   children,
@@ -187,9 +185,9 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-slate-800/80 bg-slate-900/60 p-5 shadow-xl shadow-black/15 space-y-4">
+    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0a0e16] p-5 space-y-4">
       <div>
-        <h2 className="text-sm font-extrabold text-white uppercase tracking-wider">{title}</h2>
+        <h2 className="text-sm font-black text-white tracking-tight">{title}</h2>
         {subtitle && <p className="text-[11px] text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
       <div className="space-y-3.5">{children}</div>
@@ -206,8 +204,8 @@ function TrendBars({
   const width = 100 / Math.max(data.length, 1);
 
   return (
-    <div className="relative">
-      <div className="flex items-end gap-0.5 sm:gap-1 h-36">
+    <div>
+      <div className="flex items-end gap-0.5 sm:gap-1 h-40">
         {data.map((d) => {
           const subH = (d.submitted / max) * 100;
           const resH = (d.resolved / max) * 100;
@@ -218,7 +216,7 @@ function TrendBars({
               className="flex-1 flex flex-col items-center justify-end gap-0.5 group relative"
               style={{ minWidth: `${width}%` }}
             >
-              <div className="absolute -top-14 left-1/2 -translate-x-1/2 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-xl">
+              <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-slate-950 border border-white/10 rounded-xl px-2.5 py-1.5 text-[10px] text-white opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10 shadow-2xl">
                 <div className="font-bold mb-0.5">{d.date}</div>
                 <div className="text-yellow-400">Submitted: {d.submitted}</div>
                 <div className="text-emerald-400">Resolved: {d.resolved}</div>

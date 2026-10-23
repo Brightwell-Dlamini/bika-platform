@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, Filter } from 'lucide-react';
 
 const REGIONS = ['Hhohho', 'Manzini', 'Shiselweni', 'Lubombo'];
 const MODES = ['Road Transport', 'Restaurant/Food'];
@@ -42,41 +42,55 @@ export function FilterBar() {
     get('overdue') === '1';
 
   return (
-    <div className="bg-slate-900 px-4 py-3 flex items-center gap-3 flex-wrap shrink-0">
-      <div className="relative flex-1 min-w-[200px]">
-        <Search className="absolute left-3 top-2 w-3.5 h-3.5 text-slate-500" />
-        <input
-          value={get('q')}
-          onChange={(e) => setParam('q', e.target.value || null)}
-          placeholder="Search ID, vehicle, location…"
-          className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-yellow-500"
+    <div className="shrink-0 border-b border-white/[0.05] bg-[#060a11]/px-4 py-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+          <Filter className="w-3 h-3" />
+          Filters
+        </div>
+
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
+          <input
+            value={get('q')}
+            onChange={(e) => setParam('q', e.target.value || null)}
+            placeholder="Search ID, vehicle, location…"
+            className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-yellow-500/50"
+          />
+        </div>
+
+        <Select value={get('region')} onChange={(v) => setParam('region', v)} label="Region" options={REGIONS} />
+        <Select value={get('mode')} onChange={(v) => setParam('mode', v)} label="Mode" options={MODES} />
+        <Select
+          value={get('severity')}
+          onChange={(v) => setParam('severity', v)}
+          label="Severity"
+          options={SEVERITIES}
         />
-      </div>
+        <Select value={get('status')} onChange={(v) => setParam('status', v)} label="Status" options={STATUSES} />
 
-      <Select value={get('region')} onChange={(v) => setParam('region', v)} label="Region" options={REGIONS} />
-      <Select value={get('mode')} onChange={(v) => setParam('mode', v)} label="Mode" options={MODES} />
-      <Select value={get('severity')} onChange={(v) => setParam('severity', v)} label="Severity" options={SEVERITIES} />
-      <Select value={get('status')} onChange={(v) => setParam('status', v)} label="Status" options={STATUSES} />
-
-      <button
-        onClick={() => setParam('overdue', get('overdue') === '1' ? null : '1')}
-        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-          get('overdue') === '1'
-            ? 'bg-rose-600 text-white'
-            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
-        }`}
-      >
-        SLA overdue
-      </button>
-
-      {hasFilters && (
         <button
-          onClick={clearAll}
-          className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-yellow-400"
+          type="button"
+          onClick={() => setParam('overdue', get('overdue') === '1' ? null : '1')}
+          className={`px-3 py-2 rounded-xl text-xs font-bold transition border ${
+            get('overdue') === '1'
+              ? 'bg-rose-600 border-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.35)]'
+              : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+          }`}
         >
-          <X className="w-3 h-3" /> Clear
+          SLA overdue
         </button>
-      )}
+
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="flex items-center gap-1 text-[11px] font-bold text-slate-400 hover:text-yellow-400"
+          >
+            <X className="w-3 h-3" /> Clear
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -96,7 +110,7 @@ function Select({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value || null)}
-      className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-yellow-500"
+      className="bg-black/40 border border-white/10 rounded-xl px-2.5 py-2 text-xs text-slate-200 focus:outline-none focus:border-yellow-500/50"
     >
       <option value="">{label}: all</option>
       {options.map((o) => (
