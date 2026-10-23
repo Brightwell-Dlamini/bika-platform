@@ -2,7 +2,7 @@
 
 Complete every item before announcing public availability.
 
-**Target version:** 1.2.1+  
+**Target version:** 6.0.1+  
 **Primary guide:** [GO_LIVE.md](./GO_LIVE.md)
 
 ## 1. Critical security (must complete)
@@ -19,7 +19,8 @@ Complete every item before announcing public availability.
 - [ ] Run SQL migrations through **`009_production_go_live.sql`** in Supabase SQL Editor
 - [ ] Provision **real Supabase Auth users** for every official (not seed password_hint)
 - [ ] Rotate all seed passwords; confirm `password_hint` column is empty
-- [ ] Set `SUPABASE_SERVICE_ROLE_KEY` on Vercel (server-only, never `NEXT_PUBLIC_`)
+- [x] Set `SUPABASE_SERVICE_ROLE_KEY` on Vercel (server-only, never `NEXT_PUBLIC_`)
+- [x] Set `CRON_SECRET` on Vercel (protects SLA cron)
 - [ ] Set `USSD_WEBHOOK_SECRET` if USSD is live
 - [ ] Confirm no demo credentials appear in UI, docs shared externally, or working Auth passwords
 
@@ -30,8 +31,10 @@ Complete every item before announcing public availability.
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes for admin/automation | Server only |
+| `CRON_SECRET` | Yes for SLA cron | Bearer for `/api/cron/sla-check` |
 | `USSD_WEBHOOK_SECRET` | Yes if USSD public | Gateway auth |
-| `RESEND_API_KEY` / `NOTIFY_*` | Optional | Email alerts |
+| `UPSTASH_REDIS_REST_URL` + `TOKEN` | Recommended | Shared rate limits |
+| `RESEND_API_KEY` / `NOTIFY_*` | Recommended | Email alerts |
 | `TWILIO_*` | Optional | SMS alerts |
 
 ## 3. Database order
@@ -58,22 +61,25 @@ See **GO_LIVE.md Phase D** for the full table. Minimum:
 - [ ] Track by reference (no PII leak)
 - [ ] Super Admin login + official status update
 - [ ] Unauthorized admin API → 401/403
-- [ ] `/api/health` → `ok`
+- [ ] `/api/health` → `ok`, version `6.0.1+`, `cronSecretConfigured: true`
 
 ## 6. Operational
 
+- [x] Vercel Cron scheduled (`vercel.json` → every 15 minutes)
 - [ ] Supabase Pro backups enabled (or documented export cadence)
 - [ ] Vercel production domain + HTTPS
 - [ ] Ministry contacts in offline runbook
 - [ ] Hotline numbers verified against national services
 - [ ] Log retention / search process agreed
+- [ ] Upstash Redis for multi-instance rate limiting (optional but recommended)
+- [ ] Resend (or webhook) for officer/SLA email alerts
 
 ## 7. Known residual (acceptable short-term)
 
-- In-memory rate limit on `/api/report` is per-instance; consider Upstash Redis later
+- In-memory rate limit remains until Upstash env vars are set
 - Mobile store listings need Apple/Google accounts (web/PWA can launch first)
 - Client storage layer still caches for UX; authoritative writes go through Supabase / admin APIs
 
 ---
 
-**Verdict:** Ready for **controlled national launch** once GO_LIVE Phases A–E are complete.
+**Verdict:** Ready for **controlled national launch** once GO_LIVE Phases A–E are complete and notification + Redis env vars are configured.

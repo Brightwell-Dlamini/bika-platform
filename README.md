@@ -4,7 +4,7 @@
 
 > *See something, say something*
 
-**Version:** 6.0.0  
+**Version:** 6.0.1  
 **Stack:** Next.js 15 · React 19 · Supabase · Tailwind
 
 ---
@@ -28,7 +28,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Health: `GET /api/health` → `6.0.0`
+Health: `GET /api/health` → `6.0.1`
 
 Gap tracker: [docs/GAP_CHECKLIST.md](docs/GAP_CHECKLIST.md)
 
@@ -43,7 +43,18 @@ Gap tracker: [docs/GAP_CHECKLIST.md](docs/GAP_CHECKLIST.md)
 | `npm run test:smoke` | Reference ID + transition graph |
 | `npm run lint` | ESLint |
 
-SLA cron: `GET /api/cron/sla-check` with `Authorization: Bearer $CRON_SECRET`
+SLA cron: scheduled every 15 minutes via `vercel.json` → `GET /api/cron/sla-check`  
+Auth: `Authorization: Bearer $CRON_SECRET`
+
+---
+
+## Production ops (immediate)
+
+1. **CRON_SECRET** — set on Vercel (protects SLA job)
+2. **Upstash Redis** (optional but recommended) — `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` for multi-instance rate limits
+3. **Email alerts** (optional) — `RESEND_API_KEY` + `NOTIFY_TO_EMAIL` (+ optional `NOTIFY_FROM_EMAIL`)
+
+See [docs/PRODUCTION_CHECKLIST.md](docs/PRODUCTION_CHECKLIST.md).
 
 ---
 

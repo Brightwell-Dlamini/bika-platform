@@ -4,7 +4,7 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '6.0.0';
+const PLATFORM_VERSION = '6.0.1';
 
 export async function GET() {
   const health = getEnvHealth();
@@ -17,10 +17,12 @@ export async function GET() {
     const t0 = Date.now();
     try {
       const supabase = createServiceSupabase();
+      // Lightweight probe — avoid count(*) which is expensive under load
       const { error } = await supabase
         .from('incidents')
-        .select('id', { count: 'exact', head: true })
-        .limit(1);
+        .select('id')
+        .limit(1)
+        .maybeSingle();
       const latencyMs = Date.now() - t0;
       if (error) {
         db = { ok: false, latencyMs, error: error.message.slice(0, 120) };
