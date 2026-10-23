@@ -26,9 +26,9 @@ export default function AdminDashboardPage() {
 
   if (me.isLoading || !me.data) {
     return (
-      <div className="flex items-center justify-center py-20 text-slate-500">
+      <div className="flex items-center justify-center py-24 text-slate-500">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        Loading…
+        Loading control centre…
       </div>
     );
   }
@@ -41,36 +41,39 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 animate-fadeIn">
-      <section className="relative overflow-hidden rounded-3xl border border-slate-800/80 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-8 shadow-2xl shadow-black/30">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_rgba(168,85,247,0.12),_transparent_55%)]" />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-white/[0.06] bg-[#070b12]">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute -top-20 right-0 w-96 h-96 rounded-full bg-violet-500/[0.1] blur-3xl" />
+          <div className="absolute bottom-0 left-1/4 w-64 h-64 rounded-full bg-yellow-500/[0.05] blur-3xl" />
+        </div>
+        <div className="relative p-6 sm:p-8 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2">
-              <span className="bg-purple-500/20 text-purple-200 border border-purple-400/30 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+            <div className="inline-flex items-center gap-2 mb-3">
+              <span className="rounded-full border border-violet-400/30 bg-violet-500/15 text-violet-200 text-[10px] font-black uppercase tracking-[0.14em] px-2.5 py-1">
                 {ROLE_LABELS[user.role]}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">{user.region}</span>
+              <span className="text-[10px] font-mono text-slate-500">{user.region}</span>
             </div>
-            <h1 className="text-3xl font-black text-white mt-3 tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
               {isSuper ? 'System control' : 'Operations centre'}
             </h1>
-            <p className="text-sm text-slate-400 mt-2 max-w-xl leading-relaxed">
+            <p className="mt-2 text-sm text-slate-400 max-w-lg leading-relaxed">
               {isSuper
-                ? 'Users, agencies, configuration, branding, and audit — one place.'
-                : 'Queue oversight, agency users, and public emergency hotlines.'}
+                ? 'People, configuration, branding, and national situational awareness.'
+                : 'Agency oversight, queue pressure, and public emergency channels.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
               href="/command?kiosk=1"
-              className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs px-4 py-2.5 shadow-lg shadow-yellow-500/20"
+              className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-black text-xs px-4 py-2.5 shadow-[0_0_28px_rgba(234,179,8,0.28)]"
             >
               <Radar className="w-4 h-4" />
-              Open wall
+              National wall
             </Link>
             <Link
               href="/analytics"
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-bold text-xs px-4 py-2.5 border border-slate-700"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold text-xs px-4 py-2.5"
             >
               <BarChart3 className="w-4 h-4 text-yellow-400" />
               Analytics
@@ -80,56 +83,78 @@ export default function AdminDashboardPage() {
       </section>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <KpiCard label="Total users" value={users.data?.length ?? 0} icon={Users} accent="from-slate-700 to-slate-800" href="/admin/users" />
-        <KpiCard label="Active users" value={activeUsers} icon={ShieldCheck} accent="from-emerald-900/80 to-slate-900" href="/admin/users?active=true" valueClass="text-emerald-300" />
-        <KpiCard label="Active hotlines" value={activeHotlines} icon={PhoneCall} accent="from-amber-900/60 to-slate-900" href="/admin/hotlines" valueClass="text-yellow-300" />
-        <KpiCard label="Open in scope" value={openIncidents} icon={Activity} accent="from-sky-900/60 to-slate-900" href="/officer/queue" valueClass="text-sky-300" />
+        <Stat href="/admin/users" label="Total users" value={users.data?.length ?? 0} icon={Users} />
+        <Stat
+          href="/admin/users?active=true"
+          label="Active users"
+          value={activeUsers}
+          icon={ShieldCheck}
+          tone="emerald"
+        />
+        <Stat
+          href="/admin/hotlines"
+          label="Hotlines live"
+          value={activeHotlines}
+          icon={PhoneCall}
+          tone="amber"
+        />
+        <Stat
+          href="/officer/queue"
+          label="Open in scope"
+          value={openIncidents}
+          icon={Activity}
+          tone="sky"
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        <QuickLink href="/admin/users" title="User management" body="Create, edit, and deactivate official accounts. Roles and agency assignments." icon={Users} />
-        <QuickLink href="/admin/hotlines" title="Emergency hotlines" body="Public hotline directory on the citizen portal." icon={PhoneCall} />
-        <QuickLink href="/command" title="Command Centre" body="Live map, KPI rail, and incident feed — filter by region and severity." icon={Radar} />
-        <QuickLink href="/analytics" title="Analytics & reports" body="National KPIs, regional breakdowns, trends, and CSV export." icon={BarChart3} />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        <NavCard href="/admin/users" title="User management" body="Accounts, roles, agencies, activation." icon={Users} />
+        <NavCard href="/admin/hotlines" title="Emergency hotlines" body="Public directory on the citizen portal." icon={PhoneCall} />
+        <NavCard href="/command" title="Command Centre" body="Live map, KPI rail, national incident feed." icon={Radar} />
+        <NavCard href="/analytics" title="Analytics" body="KPIs, regional performance, trends, export." icon={BarChart3} />
         {isSuper && (
-          <QuickLink href="/admin/system" title="System settings" body="Branding, integrations, session rules, audit log, and backup." icon={Settings2} />
+          <NavCard href="/admin/system" title="System settings" body="Branding, integrations, audit, backup." icon={Settings2} />
         )}
-        <QuickLink href="/officer" title="Officer workspace" body="Switch to the field officer shell for queue and case work." icon={Sparkles} />
+        <NavCard href="/officer" title="Officer workspace" body="Field queue and case handling shell." icon={Sparkles} />
       </div>
     </div>
   );
 }
 
-function KpiCard({
+function Stat({
+  href,
   label,
   value,
   icon: Icon,
-  accent,
-  href,
-  valueClass = 'text-white',
+  tone = 'neutral',
 }: {
+  href: string;
   label: string;
   value: number;
   icon: React.ComponentType<{ className?: string }>;
-  accent: string;
-  href: string;
-  valueClass?: string;
+  tone?: 'neutral' | 'emerald' | 'amber' | 'sky';
 }) {
+  const tones = {
+    neutral: 'text-white',
+    emerald: 'text-emerald-300',
+    amber: 'text-yellow-300',
+    sky: 'text-sky-300',
+  } as const;
   return (
     <Link
       href={href}
-      className={`group relative overflow-hidden rounded-2xl border border-white/5 bg-gradient-to-br ${accent} p-4 shadow-lg transition hover:border-yellow-500/30 hover:-translate-y-0.5`}
+      className="group relative overflow-hidden rounded-2xl border border-white/[0.06] bg-[#0a0e16] p-5 transition hover:-translate-y-0.5 hover:border-yellow-500/25"
     >
       <div className="flex items-center justify-between">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</div>
-        <Icon className="w-4 h-4 text-slate-400 group-hover:text-yellow-400 transition" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</span>
+        <Icon className="w-4 h-4 text-slate-600 group-hover:text-yellow-400 transition" />
       </div>
-      <div className={`text-3xl font-black font-mono mt-3 tabular-nums ${valueClass}`}>{value}</div>
+      <div className={`mt-3 text-3xl font-black font-mono tabular-nums ${tones[tone]}`}>{value}</div>
     </Link>
   );
 }
 
-function QuickLink({
+function NavCard({
   href,
   title,
   body,
@@ -143,17 +168,17 @@ function QuickLink({
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-slate-800/80 bg-slate-900/60 p-5 transition hover:border-yellow-500/40 hover:bg-slate-900 flex gap-4"
+      className="group flex gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0e16] p-5 transition hover:border-yellow-500/30 hover:bg-[#0c121c]"
     >
-      <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 group-hover:border-yellow-500/40">
+      <div className="w-11 h-11 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-center shrink-0 group-hover:border-yellow-500/30">
         <Icon className="w-5 h-5 text-slate-400 group-hover:text-yellow-400 transition" />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="font-extrabold text-white group-hover:text-yellow-300 transition flex items-center justify-between gap-2">
-          <span>{title}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-black text-white group-hover:text-yellow-200 transition">{title}</span>
           <ArrowRight className="w-4 h-4 text-slate-600 group-hover:text-yellow-400 shrink-0" />
         </div>
-        <p className="text-xs text-slate-400 mt-1 leading-relaxed">{body}</p>
+        <p className="text-xs text-slate-500 mt-1 leading-relaxed">{body}</p>
       </div>
     </Link>
   );
