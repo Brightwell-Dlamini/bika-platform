@@ -190,13 +190,18 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
               <div className="text-xs font-bold text-white leading-tight">{user.name}</div>
               <div className="text-[10px] text-slate-500">{ROLE_LABELS[user.role]}</div>
             </div>
-            <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden">
+            <Link
+              href="/officer/profile"
+              className="w-8 h-8 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden hover:border-yellow-500/50 transition"
+              title="Profile"
+              aria-label="Edit profile"
+            >
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 <UserIcon className="w-4 h-4" />
               )}
-            </div>
+            </Link>
             <button
               type="button"
               onClick={handleSignOut}
