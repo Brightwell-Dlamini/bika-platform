@@ -71,7 +71,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/admin" className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-slate-950 border border-yellow-500/40 p-0.5">
+              <div className="w-9 h-9 shrink-0">
                 <img src="/Bika.png" alt="BIKA" className="w-full h-full object-contain" />
               </div>
               <div>
