@@ -13,6 +13,12 @@ export interface UploadResult {
   error?: string;
 }
 
+export interface AvatarUploadResult {
+  success: boolean;
+  url?: string;
+  error?: string;
+}
+
 export async function validateAndProcessImage(file: File): Promise<UploadResult> {
   if (!ALLOWED_MIME.includes(file.type.toLowerCase())) {
     return {
@@ -25,7 +31,6 @@ export async function validateAndProcessImage(file: File): Promise<UploadResult>
   let mime = file.type;
   let size = file.size;
 
-  // Compress if over limit
   if (file.size > MAX_BYTES) {
     try {
       const compressed = await compressToJpeg(file, 0.7);
@@ -49,7 +54,7 @@ export async function validateAndProcessImage(file: File): Promise<UploadResult>
   let supabase;
   try {
     supabase = getSupabaseBrowserClient();
-  } catch (err) {
+  } catch {
     return {
       success: false,
       error: 'Storage is not configured. Cannot attach images.',
@@ -85,14 +90,61 @@ export async function validateAndProcessImage(file: File): Promise<UploadResult>
   };
 }
 
-function compressToJpeg(file: File, quality: number): Promise<Blob> {
+/** Upload a profile avatar (compressed, public URL). */
+export async function uploadAvatar(file: File, userId: string): Promise<AvatarUploadResult> {
+  if (!ALLOWED_MIME.includes(file.type.toLowerCase())) {
+    return { success: false, error: 'Only JPG, PNG, or WEBP images are accepted.' };
+  }
+
+  let blob: Blob = file;
+  let mime = file.type;
+
+  try {
+    // Always compress/resize for consistent avatar size
+    blob = await compressToJpeg(file, 0.82, 512);
+    mime = 'image/jpeg';
+    if (blob.size > MAX_BYTES) {
+      blob = await compressToJpeg(file, 0.6, 384);
+    }
+    if (blob.size > MAX_BYTES) {
+      return { success: false, error: 'Image is still too large after compression.' };
+    }
+  } catch {
+    return { success: false, error: 'Could not process the image. Try another photo.' };
+  }
+
+  let supabase;
+  try {
+    supabase = getSupabaseBrowserClient();
+  } catch {
+    return { success: false, error: 'Storage is not configured.' };
+  }
+
+  const safeId = userId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 48) || 'user';
+  const path = `avatars/${safeId}-${Date.now()}.jpg`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+
+  if (uploadError) {
+    return {
+      success: false,
+      error: uploadError.message || 'Avatar upload failed. Check storage permissions.',
+    };
+  }
+
+  const { data: publicUrlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return { success: true, url: publicUrlData.publicUrl };
+}
+
+function compressToJpeg(file: File, quality: number, maxDim = 1200): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
       const canvas = document.createElement('canvas');
-      const maxDim = 1200;
       let { width, height } = img;
       if (width > maxDim || height > maxDim) {
         if (width > height) {
