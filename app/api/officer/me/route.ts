@@ -138,11 +138,30 @@ export async function GET() {
   return NextResponse.json(body);
 }
 
-const patchSchema = z.object({
-  onDuty: z.boolean(),
-});
+const patchSchema = z
+  .object({
+    onDuty: z.boolean().optional(),
+    name: z.string().trim().min(2).max(120).optional(),
+    phone: z
+      .string()
+      .trim()
+      .max(40)
+      .optional()
+      .nullable()
+      .transform((v) => (v === '' ? null : v)),
+    avatarUrl: z
+      .string()
+      .url()
+      .max(500)
+      .optional()
+      .nullable()
+      .or(z.literal('').transform(() => null)),
+  })
+  .refine((d) => d.onDuty !== undefined || d.name !== undefined || d.phone !== undefined || d.avatarUrl !== undefined, {
+    message: 'At least one field is required.',
+  });
 
-/** PATCH /api/officer/me — toggle on-duty (affects auto-assignment). */
+/** PATCH /api/officer/me — duty toggle and self-service profile fields. */
 export async function PATCH(req: NextRequest) {
   const requestId = newRequestId();
   const caller = await getCallerProfile();
@@ -179,16 +198,21 @@ export async function PATCH(req: NextRequest) {
 
   const supabase = createServiceSupabase();
   const now = new Date().toISOString();
+  const patch: Record<string, unknown> = { updated_at: now };
+  if (parsed.data.onDuty !== undefined) patch.on_duty = parsed.data.onDuty;
+  if (parsed.data.name !== undefined) patch.name = parsed.data.name;
+  if (parsed.data.phone !== undefined) patch.phone = parsed.data.phone;
+  if (parsed.data.avatarUrl !== undefined) patch.avatar_url = parsed.data.avatarUrl;
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .update({ on_duty: parsed.data.onDuty, updated_at: now })
+    .update(patch)
     .eq('id', caller.id)
     .select('*')
     .single();
 
   if (error || !profile) {
-    logger.error('officer_duty_update_failed', {
+    logger.error('officer_me_update_failed', {
       requestId,
       actorId: caller.id,
       error: error?.message,
@@ -196,15 +220,15 @@ export async function PATCH(req: NextRequest) {
     const body: ApiResponse<never> = {
       ok: false,
       code: 'DB_ERROR',
-      error: 'Could not update duty status.',
+      error: 'Could not update profile.',
     };
     return NextResponse.json(body, { status: 500 });
   }
 
-  logger.info('officer_duty_updated', {
+  logger.info('officer_me_updated', {
     requestId,
     actorId: caller.id,
-    onDuty: parsed.data.onDuty,
+    fields: Object.keys(parsed.data),
   });
 
   const body: ApiResponse<{ user: User }> = {
