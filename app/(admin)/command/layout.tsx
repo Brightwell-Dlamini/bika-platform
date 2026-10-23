@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Loader2, LogOut, User as UserIcon, ArrowLeft } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Loader2, LogOut, User as UserIcon, ArrowLeft, Maximize2 } from 'lucide-react';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
 import { useIncidentsRealtime } from '@/app/lib/api/hooks/useRealtime';
 import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
@@ -11,7 +11,24 @@ import { canRunWork, ROLE_LABELS } from '@/app/lib/rbac';
 import { toast } from 'sonner';
 
 export default function CommandLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
+          <Loader2 className="w-6 h-6 animate-spin mr-2" />
+          Loading Command Centre…
+        </div>
+      }
+    >
+      <CommandLayoutInner>{children}</CommandLayoutInner>
+    </Suspense>
+  );
+}
+
+function CommandLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const kiosk = searchParams.get('kiosk') === '1' || searchParams.get('wall') === '1';
   const me = useOfficerMe();
   useIncidentsRealtime();
 
@@ -55,9 +72,48 @@ export default function CommandLayout({ children }: { children: React.ReactNode 
 
   const user = me.data.user;
 
+  if (kiosk) {
+    return (
+      <div className="h-screen max-h-screen bg-[#070b12] text-slate-100 flex flex-col overflow-hidden">
+        <header className="h-11 flex items-center justify-between px-5 shrink-0 border-b border-white/5 bg-black/40">
+          <div className="flex items-center gap-3">
+            <img src="/Bika.png" alt="" className="w-7 h-7 object-contain" />
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
+              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-300">
+                BIKA · National Command Wall
+              </span>
+            </div>
+            <span className="hidden lg:inline text-[10px] text-slate-500 font-mono ml-2">
+              {new Date().toLocaleString('en-SZ', {
+                weekday: 'short',
+                day: '2-digit',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] text-slate-500 hidden sm:inline">
+              {user.region} · {ROLE_LABELS[user.role]}
+            </span>
+            <Link
+              href="/command"
+              className="text-[10px] font-bold text-slate-400 hover:text-yellow-400 px-2 py-1 rounded-lg hover:bg-white/5"
+              title="Exit wall mode"
+            >
+              Exit wall
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      {/* Compact command bar — no max-width, full bleed */}
       <header className="bg-slate-900 border-b border-slate-800 h-12 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-4">
           <Link
@@ -74,6 +130,13 @@ export default function CommandLayout({ children }: { children: React.ReactNode 
               Live · Command Centre
             </span>
           </div>
+          <Link
+            href="/command?kiosk=1"
+            className="hidden sm:inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-yellow-400 px-2 py-1 rounded-lg border border-slate-800 hover:border-yellow-500/40"
+          >
+            <Maximize2 className="w-3 h-3" />
+            Wall mode
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Clock, Loader2, ArrowRight } from 'lucide-react';
 import type { Incident, IncidentStatus, Severity } from '@/app/types';
 
@@ -28,6 +28,7 @@ interface LiveFeedProps {
   isLoading: boolean;
   selectedIncidentId: string | null;
   onSelectIncident: (id: string) => void;
+  kiosk?: boolean;
 }
 
 export function LiveFeed({
@@ -35,17 +36,59 @@ export function LiveFeed({
   isLoading,
   selectedIncidentId,
   onSelectIncident,
+  kiosk = false,
 }: LiveFeedProps) {
+  const prevIds = useRef<Set<string>>(new Set());
+  const primed = useRef(false);
+
+  useEffect(() => {
+    const ids = new Set(incidents.map((i) => i.id));
+    if (!primed.current) {
+      prevIds.current = ids;
+      primed.current = true;
+      return;
+    }
+    const newcomers = incidents.filter((i) => !prevIds.current.has(i.id));
+    prevIds.current = ids;
+    if (newcomers.some((i) => i.severity === 'CRITICAL' || i.severity === 'HIGH')) {
+      try {
+        const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = newcomers.some((i) => i.severity === 'CRITICAL') ? 880 : 660;
+        gain.gain.value = 0.04;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        setTimeout(() => {
+          osc.stop();
+          void ctx.close();
+        }, 180);
+      } catch {
+        /* audio optional */
+      }
+    }
+  }, [incidents]);
+
   return (
     <div className="h-full flex flex-col">
-      <div className="p-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+      <div
+        className={`p-3 flex items-center justify-between shrink-0 ${
+          kiosk ? 'border-b border-white/5' : 'border-b border-slate-800'
+        }`}
+      >
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+          <span
+            className={`font-black uppercase tracking-widest text-emerald-400 ${
+              kiosk ? 'text-xs' : 'text-[10px]'
+            }`}
+          >
             Live feed
           </span>
         </div>
-        <span className="text-[10px] font-mono text-slate-500">
+        <span className={`font-mono text-slate-500 ${kiosk ? 'text-xs' : 'text-[10px]'}`}>
           {incidents.length} incident{incidents.length === 1 ? '' : 's'}
         </span>
       </div>
@@ -60,7 +103,7 @@ export function LiveFeed({
           No incidents match the current filters.
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+        <div className={`flex-1 overflow-y-auto ${kiosk ? 'divide-y divide-white/5' : 'divide-y divide-slate-800/60'}`}>
           {incidents.map((incident) => {
             const overdue =
               incident.slaDueAt &&
@@ -72,33 +115,43 @@ export function LiveFeed({
               <button
                 key={incident.id}
                 onClick={() => onSelectIncident(incident.id)}
-                className={`w-full text-left p-3 transition-colors ${
+                className={`w-full text-left transition-colors ${
+                  kiosk ? 'p-4' : 'p-3'
+                } ${
                   isSelected
                     ? 'bg-yellow-500/10 border-l-2 border-l-yellow-500'
                     : 'hover:bg-slate-800/60 border-l-2 border-l-transparent'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className="font-mono text-[11px] font-bold text-yellow-400 truncate">
+                  <span
+                    className={`font-mono font-bold text-yellow-400 truncate ${
+                      kiosk ? 'text-sm' : 'text-[11px]'
+                    }`}
+                  >
                     {incident.id}
                   </span>
                   <span
-                    className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${SEV_STYLE[incident.severity]}`}
+                    className={`font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
+                      kiosk ? 'text-[10px]' : 'text-[9px]'
+                    } ${SEV_STYLE[incident.severity]}`}
                   >
                     {incident.severity}
                   </span>
                 </div>
 
-                <div className="text-xs font-bold text-white truncate">
+                <div className={`font-bold text-white truncate ${kiosk ? 'text-sm' : 'text-xs'}`}>
                   {incident.category}
                 </div>
-                <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                <div className={`text-slate-400 truncate mt-0.5 ${kiosk ? 'text-xs' : 'text-[11px]'}`}>
                   {incident.location} · {incident.region}
                 </div>
 
                 <div className="flex items-center justify-between gap-2 mt-1.5">
                   <span
-                    className={`text-[10px] font-bold uppercase ${STATUS_COLOR[incident.status]}`}
+                    className={`font-bold uppercase ${STATUS_COLOR[incident.status]} ${
+                      kiosk ? 'text-[11px]' : 'text-[10px]'
+                    }`}
                   >
                     {incident.status.replace('_', ' ')}
                   </span>
@@ -114,7 +167,7 @@ export function LiveFeed({
                         minute: '2-digit',
                       })}
                     </span>
-                    <ArrowRight className="w-3 h-3 opacity-50" />
+                    {!kiosk && <ArrowRight className="w-3 h-3 opacity-50" />}
                   </div>
                 </div>
               </button>
