@@ -1,32 +1,12 @@
+/* BIKA global styles + light-mode system */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ==========================================================================
-   BIKA ESWATINI - LIGHT & DARK THEME UNIFIED DESIGN SYSTEM
-   Fully contrast-safe light mode (dark mode left intentional)
-   ========================================================================== */
-
-html,
-body,
-#root {
-  background-color: #020617;
-  color: #f8fafc;
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-html.light-mode,
-body.light-mode,
-.light-mode {
-  background-color: #f1f5f9 !important;
-  color: #0f172a !important;
-}
+/* -------------------------------------------------------------------------- */
+/* Light-mode — invert slate surfaces while preserving brand contrast          */
+/* -------------------------------------------------------------------------- */
 
 .light-mode .bg-slate-950,
 .light-mode .bg-slate-950\/95,
@@ -129,11 +109,39 @@ body.light-mode,
   border-color: #fecaca !important;
 }
 
+/* Body copy on light surfaces */
 .light-mode .text-white,
 .light-mode .text-slate-50,
 .light-mode .text-slate-100,
 .light-mode .text-slate-200 {
   color: #0f172a !important;
+}
+
+/* Keep pure white on brand / emergency / gradient chips */
+.light-mode .text-on-brand,
+.light-mode [data-on-brand='true'],
+.light-mode [data-on-brand='true'] .text-white {
+  color: #ffffff !important;
+}
+
+/* Primary yellow actions stay dark ink on gold */
+.light-mode .bg-yellow-500,
+.light-mode .bg-yellow-400 {
+  color: #0f172a !important;
+}
+
+/* Status ribbon / emergency strips always keep high-contrast white type */
+.light-mode .brand-ribbon,
+.light-mode .brand-ribbon * {
+  color: #ffffff !important;
+}
+
+/* Logo wordmark: high contrast ink on light chrome */
+.light-mode .logo-wordmark {
+  color: #0f172a !important;
+}
+.light-mode .logo-tagline {
+  color: #475569 !important;
 }
 
 .light-mode .text-slate-300 {
@@ -176,173 +184,31 @@ body.light-mode,
   color: #b91c1c !important;
 }
 
-.light-mode .bg-yellow-500,
-.light-mode .bg-yellow-400,
-.light-mode .bg-amber-500 {
-  background-color: #eab308 !important;
-  color: #020617 !important;
-  border-color: #ca8a04 !important;
+.light-mode body {
+  background-color: #f8fafc;
+  color: #0f172a;
 }
 
-.light-mode .bg-yellow-500 *,
-.light-mode .bg-yellow-400 *,
-.light-mode .bg-amber-500 * {
-  color: #020617 !important;
-}
-
-.light-mode header .bg-gradient-to-r {
-  background-image: linear-gradient(to right, #b45309, #047857, #1d4ed8) !important;
-  color: #ffffff !important;
-}
-
-.light-mode header .bg-gradient-to-r * {
-  color: #ffffff !important;
-}
-
-.light-mode .bg-yellow-500\/20,
-.light-mode .bg-yellow-500\/15,
-.light-mode .bg-yellow-500\/10,
-.light-mode .bg-amber-500\/20,
-.light-mode .bg-amber-500\/10 {
-  background-color: #fef3c7 !important;
-  color: #92400e !important;
-  border-color: #fcd34d !important;
-}
-
-.light-mode .bg-emerald-500\/20,
-.light-mode .bg-emerald-500\/15,
-.light-mode .bg-emerald-500\/10 {
-  background-color: #d1fae5 !important;
-  color: #065f46 !important;
-  border-color: #6ee7b7 !important;
-}
-
-.light-mode .bg-red-500\/20,
-.light-mode .bg-red-500\/15,
-.light-mode .bg-red-500\/10,
-.light-mode .bg-red-950\/40 {
-  background-color: #fee2e2 !important;
-  color: #991b1b !important;
-  border-color: #fca5a5 !important;
+.light-mode ::selection {
+  background: #fde68a;
+  color: #0f172a;
 }
 
 .light-mode input,
-.light-mode select,
-.light-mode textarea {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
-}
-
-.light-mode input:focus,
-.light-mode select:focus,
-.light-mode textarea:focus {
-  border-color: #ca8a04 !important;
-  outline: 2px solid rgba(202, 138, 4, 0.25) !important;
+.light-mode textarea,
+.light-mode select {
+  color: #0f172a;
 }
 
 .light-mode input::placeholder,
 .light-mode textarea::placeholder {
-  color: #64748b !important;
-  opacity: 1 !important;
+  color: #94a3b8;
 }
 
-.light-mode footer.bg-slate-900,
-.light-mode footer {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #0f172a !important;
-}
-
-.light-mode ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
-}
-
-.light-mode ::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-
-.light-mode ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 999px;
-}
-
-@media print {
-  header,
-  nav,
-  footer,
-  aside,
-  .no-print,
-  button {
-    display: none !important;
-  }
-  body,
-  #root,
-  main {
-    background: #ffffff !important;
-    color: #000000 !important;
-  }
-}
-
-/* ---- Motion & UX utilities ---- */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.35s ease-out;
-}
-
-.animate-scaleIn {
-  animation: scaleIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.animate-slideUp {
-  animation: slideUp 0.4s ease-out;
-}
-
-.animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(30, 41, 59, 0.6) 0%,
-    rgba(51, 65, 85, 0.9) 50%,
-    rgba(30, 41, 59, 0.6) 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s ease-in-out infinite;
-}
-
-@keyframes fadeIn {
+@keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.85);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
