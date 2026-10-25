@@ -78,23 +78,23 @@ export const zCoordinates = z.object({
 
 export const zAttachment = z.object({
   id: z.string().min(1),
-  name: z.string().min(1).max(255),
-  url: z.string().url(),
-  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024),
-  mimeType: z.string().regex(/^image\/(jpeg|jpg|png|webp)$/),
+  name: z.string().min(1).max(200),
+  url: z.string().url().or(z.string().startsWith('data:')),
+  mimeType: z.string().min(3).max(120),
+  sizeBytes: z.number().int().nonnegative().optional(),
 });
 
-export const zPhoneEswatini = z
+const zPhoneEswatini = z
   .string()
-  .regex(
-    /^(\+?268|0)?[267]\d{7}$/,
-    'Enter a valid Eswatini phone (e.g. +268 7611 2233 or 076112233)'
-  );
+  .trim()
+  .min(7)
+  .max(20)
+  .regex(/^[+0-9\s()-]+$/, 'Invalid phone number');
 
-export const zEmail = z.string().email().max(320).toLowerCase();
+const zEmail = z.string().trim().email().max(200);
 
 // -----------------------------------------------------------------------------
-// Citizen submission — the /api/reports POST body
+// Citizen report
 // -----------------------------------------------------------------------------
 
 export const zCitizenReportSubmission = z
@@ -113,6 +113,12 @@ export const zCitizenReportSubmission = z
     reporterPhone: zPhoneEswatini.optional().nullable(),
     reporterEmail: zEmail.optional().nullable(),
     isAnonymous: z.boolean().default(false),
+
+    /** Honeypot — bots fill this; humans never see it. Must be empty. */
+    website: z.string().max(0).optional().nullable(),
+
+    /** Client form open timestamp (ms). Used to reject instant bot posts. */
+    formOpenedAt: z.number().int().positive().optional().nullable(),
 
     // Road transport specific
     vehicleRegistration: z.string().max(20).optional().nullable(),
@@ -134,7 +140,21 @@ export const zCitizenReportSubmission = z
     }
   )
   .refine(
-    (data) => data.reportType === 'emergency' ? data.severity === 'CRITICAL' : true,
+    (data) => !data.isAnonymous || data.description.trim().length >= 25,
+    {
+      message: 'Anonymous reports need a clearer description (at least 25 characters).',
+      path: ['description'],
+    }
+  )
+  .refine(
+    (data) => !data.website,
+    {
+      message: 'Rejected.',
+      path: ['website'],
+    }
+  )
+  .refine(
+    (data) => (data.reportType === 'emergency' ? data.severity === 'CRITICAL' : true),
     {
       message: 'Emergency reports must have CRITICAL severity.',
       path: ['severity'],
@@ -159,76 +179,43 @@ export const zClaimCase = z.object({
 export const zAssignCase = z.object({
   incidentId: z.string().min(1),
   officerId: z.string().min(1),
-  agencyCode: zAgencyCode,
-  reason: z.string().max(500).optional(),
+  note: z.string().max(2000).optional(),
 });
-
-export const zEscalateCase = z.object({
-  incidentId: z.string().min(1),
-  reason: z.string().min(10).max(2000),
-  targetAgencyCode: zAgencyCode.optional(),
-});
-
-export const zAddNote = z.object({
-  incidentId: z.string().min(1),
-  body: z.string().min(1).max(4000),
-  isPublic: z.boolean().default(false),
-});
-
-export const zCitizenRating = z.object({
-  incidentId: z.string().min(1),
-  score: z.number().int().min(1).max(5),
-  comment: z.string().max(1000).optional(),
-});
-
-export const zLinkDuplicate = z.object({
-  incidentId: z.string().min(1),
-  duplicateOfId: z.string().min(1),
-  reason: z.string().max(500).optional(),
-});
-
-// -----------------------------------------------------------------------------
-// Admin — user management
-// -----------------------------------------------------------------------------
 
 export const zCreateUser = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1).optional(),
   name: z.string().min(2).max(120),
-  email: zEmail,
-  password: z.string().min(8).max(72), // Supabase Auth max is 72
+  email: z.string().email().max(200),
+  password: z.string().min(8).max(128),
   role: zUserRole,
   region: z.union([zRegion, z.literal('Nationwide')]),
   agencyCode: zAgencyCode.optional().nullable(),
-  department: z.string().max(200).optional().nullable(),
-  badgeNumber: z.string().max(50).optional().nullable(),
-  phone: zPhoneEswatini.optional().nullable(),
+  department: z.string().max(120).optional().nullable(),
+  badgeNumber: z.string().max(40).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
   active: z.boolean().default(true),
-  onDuty: z.boolean().default(true),
+  onDuty: z.boolean().default(false),
 });
 
 export const zUpdateUser = z.object({
   id: z.string().min(1),
   name: z.string().min(2).max(120).optional(),
-  email: zEmail.optional(),
-  password: z.string().min(8).max(72).optional(),
+  email: z.string().email().max(200).optional(),
+  password: z.string().min(8).max(128).optional(),
   role: zUserRole.optional(),
   region: z.union([zRegion, z.literal('Nationwide')]).optional(),
   agencyCode: zAgencyCode.optional().nullable(),
-  department: z.string().max(200).optional().nullable(),
-  badgeNumber: z.string().max(50).optional().nullable(),
-  phone: zPhoneEswatini.optional().nullable(),
+  department: z.string().max(120).optional().nullable(),
+  badgeNumber: z.string().max(40).optional().nullable(),
+  phone: z.string().max(40).optional().nullable(),
   active: z.boolean().optional(),
   onDuty: z.boolean().optional(),
 });
 
-// -----------------------------------------------------------------------------
-// Admin — hotlines, logos, config
-// -----------------------------------------------------------------------------
-
 export const zUpsertHotline = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1).optional(),
   name: z.string().min(2).max(120),
-  number: z.string().min(2).max(50),
+  number: z.string().min(2).max(40),
   category: z.enum([
     'emergency',
     'police',
@@ -240,58 +227,30 @@ export const zUpsertHotline = z.object({
   ]),
   description: z.string().max(500).optional().nullable(),
   agencyCode: zAgencyCode.optional().nullable(),
-  availableHours: z.string().max(100).default('24/7'),
+  availableHours: z.string().max(80).default('24/7'),
   isTollFree: z.boolean().default(false),
-  priority: z.number().int().min(1).max(100).default(10),
+  priority: z.number().int().min(0).max(1000).default(100),
   active: z.boolean().default(true),
 });
 
-export const zUpsertLogo = z.object({
-  id: z.string().min(1),
-  name: z.string().min(2).max(200),
-  subtitle: z.string().max(300).optional().nullable(),
-  acronym: z.string().min(2).max(10),
-  role: z.string().max(200).optional().nullable(),
-  customImageUrl: z.string().url().optional().nullable(),
-  badgeColor: z.string().max(200).optional().nullable(),
-});
-
 // -----------------------------------------------------------------------------
-// USSD
-// -----------------------------------------------------------------------------
-
-export const zUssdPayload = z.object({
-  sessionId: z.string().min(1).max(100),
-  phoneNumber: zPhoneEswatini,
-  serviceCode: z.string().max(50),
-  text: z.string().max(500).default(''),
-});
-
-// -----------------------------------------------------------------------------
-// Utility: parse and throw on failure (for API routes)
+// Helpers
 // -----------------------------------------------------------------------------
 
 export class ValidationError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly details: unknown
-  ) {
+  code = 'VALIDATION_FAILED' as const;
+  details: unknown;
+  constructor(message: string, details?: unknown) {
     super(message);
-    this.name = 'ValidationError';
+    this.details = details;
   }
 }
 
-export function parseOrThrow<T>(
-  schema: z.ZodSchema<T>,
-  input: unknown,
-  label: string
-): T {
-  const result = schema.safeParse(input);
+export function parseOrThrow<T>(schema: z.ZodType<T>, data: unknown, label = 'Payload'): T {
+  const result = schema.safeParse(data);
   if (!result.success) {
     throw new ValidationError(
-      'VALIDATION_FAILED',
-      `${label}: ${result.error.issues.map((i) => i.message).join('; ')}`,
+      `${label} failed validation: ${result.error.issues.map((i) => i.message).join('; ')}`,
       result.error.flatten()
     );
   }
