@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { FileText, Search, LogIn, WifiOff, Plus } from 'lucide-react';
+import { FileText, Search, Phone, WifiOff, Plus } from 'lucide-react';
 import { getMyReports } from '@/app/lib/myReports';
 
 function focusSectorPicker() {
@@ -49,10 +49,9 @@ export function PublicMobileNav() {
 
   const reportActive = pathname.startsWith('/report') || pathname === '/';
   const trackActive = pathname.startsWith('/track') || pathname.startsWith('/r/');
-  const loginActive = pathname.startsWith('/login');
+  const hotlinesActive = pathname.startsWith('/hotlines');
 
   const onReportClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Same URL client nav is a silent no-op — always handle explicitly
     e.preventDefault();
     if (pathname.startsWith('/report')) {
       focusSectorPicker();
@@ -137,26 +136,26 @@ export function PublicMobileNav() {
           </div>
 
           <Link
-            href="/login"
-            aria-current={loginActive ? 'page' : undefined}
+            href="/hotlines"
+            aria-current={hotlinesActive ? 'page' : undefined}
             className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[48px] pb-2 transition-colors touch-manipulation ${
-              loginActive ? 'text-yellow-400' : 'text-slate-500 active:text-slate-300'
+              hotlinesActive ? 'text-yellow-400' : 'text-slate-500 active:text-slate-300'
             }`}
           >
             <span
               className={`absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full transition-all duration-200 ${
-                loginActive ? 'w-8 bg-yellow-400' : 'w-0'
+                hotlinesActive ? 'w-8 bg-yellow-400' : 'w-0'
               }`}
               aria-hidden
             />
             <span
               className={`flex items-center justify-center w-10 h-8 rounded-xl ${
-                loginActive ? 'bg-yellow-500/15' : ''
+                hotlinesActive ? 'bg-yellow-500/15' : ''
               }`}
             >
-              <LogIn className="w-5 h-5" strokeWidth={loginActive ? 2.5 : 2} />
+              <Phone className="w-5 h-5" strokeWidth={hotlinesActive ? 2.5 : 2} />
             </span>
-            <span>Official</span>
+            <span>Hotlines</span>
           </Link>
         </div>
       </nav>
