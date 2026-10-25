@@ -26,6 +26,12 @@ export function PublicFooter() {
         <span className="text-slate-700" aria-hidden="true">
           ·
         </span>
+        <Link href="/hotlines" className="text-yellow-400/90 hover:text-yellow-300 transition">
+          Hotlines
+        </Link>
+        <span className="text-slate-700" aria-hidden="true">
+          ·
+        </span>
         <Link href="/login" className="text-slate-400 hover:text-white transition">
           Official login
         </Link>
