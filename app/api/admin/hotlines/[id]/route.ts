@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/server';
-import { canRunSystem } from '@/app/lib/rbac';
+import { canManageHotlines } from '@/app/lib/rbac';
 import { logger, newRequestId } from '@/app/lib/logger';
 import type { ApiResponse } from '@/app/types';
 
@@ -18,8 +18,12 @@ export async function DELETE(
     const body: ApiResponse<never> = { ok: false, code: 'UNAUTHORIZED', error: 'Authentication required.' };
     return NextResponse.json(body, { status: 401 });
   }
-  if (!canRunSystem(caller.role)) {
-    const body: ApiResponse<never> = { ok: false, code: 'FORBIDDEN', error: 'Super Admin only.' };
+  if (!canManageHotlines(caller.role)) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'Admin or Super Admin required to manage hotlines.',
+    };
     return NextResponse.json(body, { status: 403 });
   }
 
