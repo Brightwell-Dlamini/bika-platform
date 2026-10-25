@@ -1,1 +1,288 @@
-PLACEHOLDER_WILL_FAIL
+/**
+ * BIKA v2 — Zod schemas mirroring the Postgres schema exactly.
+ *
+ * Rule: if the DB accepts it, the schema accepts it. If the DB rejects it,
+ * the schema rejects it *before* we ever hit the database.
+ *
+ * These schemas are the ONLY place validation logic lives. Forms, API routes,
+ * and RPC payloads all reference these.
+ */
+
+import { z } from 'zod';
+
+// -----------------------------------------------------------------------------
+// Enums — MUST match sql/000_reset.sql exactly
+// -----------------------------------------------------------------------------
+
+export const zRegion = z.enum(['Hhohho', 'Manzini', 'Shiselweni', 'Lubombo']);
+export const zMode = z.enum(['Road Transport', 'Restaurant/Food']);
+export const zSeverity = z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
+export const zReportType = z.enum([
+  'incident',
+  'complaint',
+  'compliment',
+  'rating',
+  'emergency',
+]);
+export const zIncidentStatus = z.enum([
+  'submitted',
+  'triaged',
+  'assigned',
+  'in_progress',
+  'awaiting_info',
+  'escalated',
+  'resolved',
+  'closed',
+  'rejected',
+]);
+export const zUserRole = z.enum([
+  'super_admin',
+  'admin',
+  'police',
+  'health_inspector',
+  'rank_marshal',
+  'public',
+]);
+export const zAgencyCode = z.enum([
+  'REPS',
+  'MOH',
+  'NRTC',
+  'NFES',
+  'MPWT',
+  'ACC',
+  'BIKA',
+]);
+export const zIncidentEventType = z.enum([
+  'incident.submitted',
+  'incident.triaged',
+  'incident.assigned',
+  'incident.status_changed',
+  'incident.note_added',
+  'incident.message_sent',
+  'incident.escalated',
+  'incident.resolved',
+  'incident.closed',
+  'incident.rated',
+  'incident.attachment_added',
+  'incident.duplicate_linked',
+]);
+
+// -----------------------------------------------------------------------------
+// Primitives
+// -----------------------------------------------------------------------------
+
+export const zCoordinates = z.object({
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+
+export const zAttachment = z.object({
+  id: z.string().min(1),
+  url: z.string().url().or(z.string().startsWith('data:')),
+  type: z.enum(['image', 'video', 'document']).default('image'),
+  caption: z.string().max(200).optional().nullable(),
+});
+
+export const zPhoneEswatini = z
+  .string()
+  .trim()
+  .regex(/^(\+268)?[0-9\s-]{7,15}$/, 'Enter a valid Eswatini phone number');
+
+export const zEmail = z.string().email().max(320).toLowerCase();
+
+// -----------------------------------------------------------------------------
+// Citizen report submission
+// -----------------------------------------------------------------------------
+
+export const zCitizenReportSubmission = z
+  .object({
+    reportType: zReportType,
+    mode: zMode,
+    region: zRegion,
+    category: z.string().min(2).max(120),
+    location: z.string().min(3).max(200),
+    description: z.string().min(10).max(4000),
+
+    severity: zSeverity.default('MEDIUM'),
+
+    reporterName: z.string().max(120).optional().nullable(),
+    reporterPhone: zPhoneEswatini.optional().nullable(),
+    reporterEmail: zEmail.optional().nullable(),
+    isAnonymous: z.boolean().default(false),
+
+    website: z.string().max(0).optional().nullable(),
+    formOpenedAt: z.number().int().positive().optional().nullable(),
+
+    vehicleRegistration: z.string().max(20).optional().nullable(),
+    operatorName: z.string().max(120).optional().nullable(),
+    driverName: z.string().max(120).optional().nullable(),
+
+    establishmentName: z.string().max(200).optional().nullable(),
+
+    coordinates: zCoordinates.optional().nullable(),
+
+    attachments: z.array(zAttachment).max(5).default([]),
+  })
+  .refine(
+    (data) => data.isAnonymous || Boolean(data.reporterPhone || data.reporterEmail),
+    {
+      message: 'Provide a phone or email, or submit anonymously.',
+      path: ['reporterPhone'],
+    }
+  )
+  .refine(
+    (data) => !data.isAnonymous || data.description.trim().length >= 25,
+    {
+      message: 'Anonymous reports need a clearer description (at least 25 characters).',
+      path: ['description'],
+    }
+  )
+  .refine(
+    (data) => !data.website,
+    {
+      message: 'Rejected.',
+      path: ['website'],
+    }
+  )
+  .refine(
+    (data) => (data.reportType === 'emergency' ? data.severity === 'CRITICAL' : true),
+    {
+      message: 'Emergency reports must have CRITICAL severity.',
+      path: ['severity'],
+    }
+  );
+
+export type CitizenReportSubmission = z.infer<typeof zCitizenReportSubmission>;
+
+// -----------------------------------------------------------------------------
+// Officer/admin actions
+// -----------------------------------------------------------------------------
+
+export const zStatusTransition = z.object({
+  to: zIncidentStatus,
+  note: z.string().max(2000).optional(),
+});
+
+export const zClaimCase = z.object({
+  incidentId: z.string().min(1),
+});
+
+export const zAssignCase = z.object({
+  incidentId: z.string().min(1),
+  assigneeId: z.string().min(1),
+  note: z.string().max(2000).optional().nullable(),
+});
+
+export const zEscalateCase = z.object({
+  incidentId: z.string().min(1),
+  toAgency: zAgencyCode,
+  reason: z.string().min(5).max(2000),
+});
+
+export const zAddNote = z.object({
+  incidentId: z.string().min(1),
+  body: z.string().min(1).max(4000),
+  isPublic: z.boolean().default(false),
+});
+
+export const zCitizenRating = z.object({
+  stars: z.number().int().min(1).max(5),
+  comment: z.string().max(1000).optional().nullable(),
+});
+
+export const zLinkDuplicate = z.object({
+  primaryId: z.string().min(1),
+  duplicateId: z.string().min(1),
+  note: z.string().max(1000).optional().nullable(),
+});
+
+// -----------------------------------------------------------------------------
+// Admin
+// -----------------------------------------------------------------------------
+
+export const zCreateUser = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2).max(120),
+  email: zEmail,
+  password: z.string().min(8).max(128),
+  role: zUserRole,
+  region: z.union([zRegion, z.literal('Nationwide')]),
+  agencyCode: zAgencyCode.optional().nullable(),
+  department: z.string().max(120).optional().nullable(),
+  badgeNumber: z.string().max(40).optional().nullable(),
+  phone: z.string().max(30).optional().nullable(),
+  active: z.boolean().default(true),
+  onDuty: z.boolean().default(true),
+});
+
+export const zUpdateUser = zCreateUser.partial().extend({
+  id: z.string().min(1),
+  password: z.string().min(8).max(128).optional(),
+});
+
+export const zUpsertHotline = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2).max(120),
+  number: z.string().min(2).max(40),
+  category: z.enum([
+    'emergency',
+    'police',
+    'fire',
+    'medical',
+    'transport',
+    'anti_corruption',
+    'general',
+  ]),
+  description: z.string().max(500).optional().nullable(),
+  agencyCode: zAgencyCode.optional().nullable(),
+  availableHours: z.string().max(80).default('24/7'),
+  isTollFree: z.boolean().default(false),
+  priority: z.number().int().min(1).max(1000).default(10),
+  active: z.boolean().default(true),
+});
+
+export const zUpsertLogo = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1).max(80),
+  subtitle: z.string().max(120).optional().nullable(),
+  acronym: z.string().max(12).optional().nullable(),
+  role: z.string().max(40).optional().nullable(),
+  customImageUrl: z.string().url().optional().nullable(),
+  badgeColor: z.string().max(20).optional().nullable(),
+});
+
+export const zUssdPayload = z.object({
+  sessionId: z.string().min(1),
+  phoneNumber: z.string().min(7).max(20),
+  text: z.string().max(500).default(''),
+  serviceCode: z.string().max(20).optional(),
+});
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+export class ValidationError extends Error {
+  readonly code = 'VALIDATION_FAILED';
+  readonly details: unknown;
+  constructor(message: string, details?: unknown) {
+    super(message);
+    this.name = 'ValidationError';
+    this.details = details;
+  }
+}
+
+export function parseOrThrow<T>(
+  schema: z.ZodType<T>,
+  data: unknown,
+  label = 'Payload'
+): T {
+  const parsed = schema.safeParse(data);
+  if (!parsed.success) {
+    throw new ValidationError(
+      `${label} is invalid.`,
+      parsed.error.flatten()
+    );
+  }
+  return parsed.data;
+}
