@@ -29,6 +29,8 @@ interface LiveFeedProps {
   selectedIncidentId: string | null;
   onSelectIncident: (id: string) => void;
   kiosk?: boolean;
+  /** Slow continuous scroll for wall displays */
+  autoScroll?: boolean;
 }
 
 export function LiveFeed({
@@ -37,39 +39,30 @@ export function LiveFeed({
   selectedIncidentId,
   onSelectIncident,
   kiosk = false,
+  autoScroll = false,
 }: LiveFeedProps) {
-  const prevIds = useRef<Set<string>>(new Set());
-  const primed = useRef(false);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const paused = useRef(false);
 
   useEffect(() => {
-    const ids = new Set(incidents.map((i) => i.id));
-    if (!primed.current) {
-      prevIds.current = ids;
-      primed.current = true;
-      return;
-    }
-    const newcomers = incidents.filter((i) => !prevIds.current.has(i.id));
-    prevIds.current = ids;
-    if (newcomers.some((i) => i.severity === 'CRITICAL' || i.severity === 'HIGH')) {
-      try {
-        const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = newcomers.some((i) => i.severity === 'CRITICAL') ? 880 : 660;
-        gain.gain.value = 0.04;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        setTimeout(() => {
-          osc.stop();
-          void ctx.close();
-        }, 180);
-      } catch {
-        /* audio optional */
+    if (!autoScroll || !kiosk) return;
+    const el = listRef.current;
+    if (!el) return;
+
+    const id = window.setInterval(() => {
+      if (paused.current || !listRef.current) return;
+      const node = listRef.current;
+      const max = node.scrollHeight - node.clientHeight;
+      if (max <= 0) return;
+      if (node.scrollTop >= max - 2) {
+        node.scrollTop = 0;
+      } else {
+        node.scrollTop += 1;
       }
-    }
-  }, [incidents]);
+    }, 50);
+
+    return () => window.clearInterval(id);
+  }, [autoScroll, kiosk, incidents.length]);
 
   return (
     <div className="h-full flex flex-col">
@@ -103,62 +96,84 @@ export function LiveFeed({
           No incidents match the current filters.
         </div>
       ) : (
-        <div className={`flex-1 overflow-y-auto ${kiosk ? 'divide-y divide-white/5' : 'divide-y divide-slate-800/60'}`}>
+        <div
+          ref={listRef}
+          className={`flex-1 overflow-y-auto ${
+            kiosk ? 'divide-y divide-white/5' : 'divide-y divide-slate-800/60'
+          }`}
+          onMouseEnter={() => {
+            paused.current = true;
+          }}
+          onMouseLeave={() => {
+            paused.current = false;
+          }}
+        >
           {incidents.map((incident) => {
             const overdue =
               incident.slaDueAt &&
               new Date(incident.slaDueAt) < new Date() &&
               !['closed', 'resolved', 'rejected'].includes(incident.status);
-            const isSelected = incident.id === selectedIncidentId;
+            const selected = incident.id === selectedIncidentId;
 
             return (
               <button
                 key={incident.id}
+                type="button"
                 onClick={() => onSelectIncident(incident.id)}
-                className={`w-full text-left transition-colors ${
+                className={`w-full text-left transition border-l-2 ${
                   kiosk ? 'p-4' : 'p-3'
                 } ${
-                  isSelected
-                    ? 'bg-yellow-500/10 border-l-2 border-l-yellow-500'
-                    : 'hover:bg-slate-800/60 border-l-2 border-l-transparent'
+                  selected
+                    ? 'bg-yellow-500/10 border-l-yellow-500'
+                    : kiosk
+                      ? 'hover:bg-white/[0.04] border-l-transparent'
+                      : 'hover:bg-slate-800/60 border-l-transparent'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span
                     className={`font-mono font-bold text-yellow-400 truncate ${
-                      kiosk ? 'text-sm' : 'text-[11px]'
+                      kiosk ? 'text-base' : 'text-[11px]'
                     }`}
                   >
                     {incident.id}
                   </span>
                   <span
                     className={`font-black uppercase px-1.5 py-0.5 rounded shrink-0 ${
-                      kiosk ? 'text-[10px]' : 'text-[9px]'
+                      kiosk ? 'text-[11px]' : 'text-[9px]'
                     } ${SEV_STYLE[incident.severity]}`}
                   >
                     {incident.severity}
                   </span>
                 </div>
 
-                <div className={`font-bold text-white truncate ${kiosk ? 'text-sm' : 'text-xs'}`}>
+                <div className={`font-bold text-white truncate ${kiosk ? 'text-base' : 'text-xs'}`}>
                   {incident.category}
                 </div>
-                <div className={`text-slate-400 truncate mt-0.5 ${kiosk ? 'text-xs' : 'text-[11px]'}`}>
+                <div
+                  className={`text-slate-400 truncate mt-0.5 ${
+                    kiosk ? 'text-sm' : 'text-[11px]'
+                  }`}
+                >
                   {incident.location} · {incident.region}
                 </div>
 
                 <div className="flex items-center justify-between gap-2 mt-1.5">
                   <span
                     className={`font-bold uppercase ${STATUS_COLOR[incident.status]} ${
-                      kiosk ? 'text-[11px]' : 'text-[10px]'
+                      kiosk ? 'text-xs' : 'text-[10px]'
                     }`}
                   >
                     {incident.status.replace('_', ' ')}
                   </span>
-                  <div className="flex items-center gap-2 text-[10px] text-slate-500 shrink-0">
+                  <div
+                    className={`flex items-center gap-2 text-slate-500 shrink-0 ${
+                      kiosk ? 'text-xs' : 'text-[10px]'
+                    }`}
+                  >
                     {overdue && (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-600/20 text-rose-300 border border-rose-500/40">
-                        <Clock className="w-2.5 h-2.5" /> SLA
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-600/20 text-rose-300 border border-rose-500/40">
+                        <Clock className="w-3 h-3" /> SLA
                       </span>
                     )}
                     <span className="opacity-70">
