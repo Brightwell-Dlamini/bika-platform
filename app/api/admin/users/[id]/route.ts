@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { z } from 'zod';
 import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/server';
-import { canRunSystem } from '@/app/lib/rbac';
+import {
+  canManageUsers,
+  canAssignRole,
+  canManageSuperAdmins,
+} from '@/app/lib/rbac';
 import { zUpdateUser } from '@/app/lib/schemas';
 import { logger, newRequestId } from '@/app/lib/logger';
 import type { ApiResponse, User } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
-
-// -----------------------------------------------------------------------------
-// PATCH — update user (Super Admin only)
-// -----------------------------------------------------------------------------
 
 export async function PATCH(
   req: NextRequest,
@@ -28,11 +27,11 @@ export async function PATCH(
     };
     return NextResponse.json(body, { status: 401 });
   }
-  if (!canRunSystem(caller.role)) {
+  if (!canManageUsers(caller.role)) {
     const body: ApiResponse<never> = {
       ok: false,
       code: 'FORBIDDEN',
-      error: 'Only Super Admins can update users.',
+      error: 'Admin or Super Admin required to update users.',
     };
     return NextResponse.json(body, { status: 403 });
   }
@@ -78,7 +77,24 @@ export async function PATCH(
     return NextResponse.json(body, { status: 404 });
   }
 
-  // Update Auth if password provided
+  if (existing.role === 'super_admin' && !canManageSuperAdmins(caller.role)) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'Only Super Admins can modify Super Admin accounts.',
+    };
+    return NextResponse.json(body, { status: 403 });
+  }
+
+  if (input.role && !canAssignRole(caller.role, input.role)) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'You cannot assign the requested role.',
+    };
+    return NextResponse.json(body, { status: 403 });
+  }
+
   if (input.password && existing.auth_user_id) {
     const { error: authErr } = await admin.auth.admin.updateUserById(existing.auth_user_id, {
       password: input.password,
@@ -99,7 +115,6 @@ export async function PATCH(
     }
   }
 
-  // Build the profile patch — only include defined fields
   const patch: Record<string, unknown> = {};
   if (input.name !== undefined) patch.name = input.name;
   if (input.email !== undefined) patch.email = input.email.toLowerCase();
@@ -158,10 +173,6 @@ export async function PATCH(
   return NextResponse.json(body);
 }
 
-// -----------------------------------------------------------------------------
-// DELETE — soft deactivate (Super Admin only)
-// -----------------------------------------------------------------------------
-
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -178,16 +189,15 @@ export async function DELETE(
     };
     return NextResponse.json(body, { status: 401 });
   }
-  if (!canRunSystem(caller.role)) {
+  if (!canManageUsers(caller.role)) {
     const body: ApiResponse<never> = {
       ok: false,
       code: 'FORBIDDEN',
-      error: 'Only Super Admins can deactivate users.',
+      error: 'Admin or Super Admin required to deactivate users.',
     };
     return NextResponse.json(body, { status: 403 });
   }
 
-  // Prevent self-deactivation
   if (id === caller.id) {
     const body: ApiResponse<never> = {
       ok: false,
@@ -198,6 +208,16 @@ export async function DELETE(
   }
 
   const admin = createServiceSupabase();
+
+  const { data: target } = await admin.from('profiles').select('role').eq('id', id).maybeSingle();
+  if (target?.role === 'super_admin' && !canManageSuperAdmins(caller.role)) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'Only Super Admins can deactivate Super Admin accounts.',
+    };
+    return NextResponse.json(body, { status: 403 });
+  }
 
   const { data: updated, error } = await admin
     .from('profiles')
