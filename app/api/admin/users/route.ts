@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/server';
-import { canRunSystem, isSuperAdmin } from '@/app/lib/rbac';
+import { canManageUsers, canAssignRole, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
 import { zCreateUser } from '@/app/lib/schemas';
 import { logger, newRequestId } from '@/app/lib/logger';
 import type { ApiResponse, User } from '@/app/types';
@@ -27,13 +27,11 @@ export async function GET(req: NextRequest) {
   const supabase = createServiceSupabase();
   let q = supabase.from('profiles').select('*').order('name');
 
-  // Non-super-admins only see their own agency roster (assignment safety).
-  if (!isSuperAdmin(caller.role)) {
-    if (caller.agencyCode) {
-      q = q.eq('agency_code', caller.agencyCode);
-    }
-  } else if (agencyCode) {
+  // Super Admin / Admin: full staff directory (optional agency filter).
+  if (agencyCode) {
     q = q.eq('agency_code', agencyCode);
+  } else if (!isSuperAdmin(caller.role) && !isAdmin(caller.role) && caller.agencyCode) {
+    q = q.eq('agency_code', caller.agencyCode);
   }
 
   if (role) q = q.eq('role', role);
@@ -71,11 +69,11 @@ export async function POST(req: NextRequest) {
     };
     return NextResponse.json(body, { status: 401 });
   }
-  if (!canRunSystem(caller.role)) {
+  if (!canManageUsers(caller.role)) {
     const body: ApiResponse<never> = {
       ok: false,
       code: 'FORBIDDEN',
-      error: 'Only Super Admins can create users.',
+      error: 'Admin or Super Admin required to create users.',
     };
     return NextResponse.json(body, { status: 403 });
   }
@@ -103,6 +101,25 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(body, { status: 400 });
   }
   const input = parsed.data;
+
+  if (!canAssignRole(caller.role, input.role)) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'You cannot assign the requested role.',
+    };
+    return NextResponse.json(body, { status: 403 });
+  }
+
+  if (isAdmin(caller.role) && !isSuperAdmin(caller.role) && input.role === 'super_admin') {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'Only Super Admins can create Super Admin accounts.',
+    };
+    return NextResponse.json(body, { status: 403 });
+  }
+
   const normalizedEmail = input.email.toLowerCase().trim();
   const profileId = input.id ?? `usr-${Date.now()}`;
 
