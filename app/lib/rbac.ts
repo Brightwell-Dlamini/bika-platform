@@ -2,9 +2,12 @@
  * BIKA v2 — Role-Based Access Control.
  *
  * Three-tier model:
- *   super_admin → runs the SYSTEM (users, agencies, config, branding, backup)
- *   admin       → runs the WORK  (assign, escalate, close, merge, bulk ops)
- *   officer     → does the work  (claim, update, resolve own cases)
+ *   super_admin → runs the SYSTEM (agencies structure, branding, config, backup,
+ *                 promote/demote super admins)
+ *   admin       → runs the WORK + operational directory (assign, escalate, close,
+ *                 merge, bulk ops, command, analytics, roster of officers/admins,
+ *                 public hotlines)
+ *   officer     → does the work (claim, update, resolve own cases)
  *   public      → submits and tracks
  *
  * NEVER inline `role === 'super_admin'` in a component or API route.
@@ -41,7 +44,7 @@ export function isStaff(role: UserRole): boolean {
 // Capability checks — named after the three tiers
 // -----------------------------------------------------------------------------
 
-/** System owner: users, agencies, config, branding, backup. */
+/** System owner: agencies structure, config, branding, backup, super-admin roster. */
 export function canRunSystem(role: UserRole): boolean {
   return isSuperAdmin(role);
 }
@@ -60,16 +63,27 @@ export function canDoFieldWork(role: UserRole): boolean {
 // Feature-level checks
 // -----------------------------------------------------------------------------
 
+/**
+ * Create/edit staff accounts (officers + admins).
+ * Super Admin: full roster including other supers.
+ * Admin: officers + admins only — never create/edit super_admin accounts.
+ */
 export function canManageUsers(role: UserRole): boolean {
-  return canRunSystem(role);
+  return canRunWork(role);
+}
+
+/** Only Super Admin may create or alter super_admin accounts. */
+export function canManageSuperAdmins(role: UserRole): boolean {
+  return isSuperAdmin(role);
 }
 
 export function canManageAgencies(role: UserRole): boolean {
   return canRunSystem(role);
 }
 
+/** Public emergency directory — operational, not system config. */
 export function canManageHotlines(role: UserRole): boolean {
-  return canRunSystem(role);
+  return canRunWork(role);
 }
 
 export function canManageBranding(role: UserRole): boolean {
@@ -134,6 +148,13 @@ export function canPublishPublicNotice(role: UserRole): boolean {
   return canRunWork(role);
 }
 
+/** True if `actor` may create/update a profile with `targetRole`. */
+export function canAssignRole(actor: UserRole, targetRole: UserRole): boolean {
+  if (targetRole === 'super_admin') return canManageSuperAdmins(actor);
+  if (targetRole === 'public') return canManageUsers(actor);
+  return canManageUsers(actor);
+}
+
 // -----------------------------------------------------------------------------
 // Scoping helpers — for query filters, not permissions
 // -----------------------------------------------------------------------------
@@ -155,14 +176,15 @@ export interface ScopeFilter {
  * security. Officers get scoped views; Admins get nationwide with their agency
  * pre-selected; Super Admin gets everything.
  */
-export function defaultScopeFor(role: UserRole, user: {
-  id: string;
-  region: string;
-  agencyCode: AgencyCode | null;
-}): ScopeFilter {
-  if (isSuperAdmin(role)) {
-    return {};
+export function defaultScopeFor(
+  role: UserRole,
+  user: {
+    id: string;
+    region: string;
+    agencyCode?: AgencyCode | null;
   }
+): ScopeFilter {
+  if (isSuperAdmin(role)) return {};
   if (isAdmin(role)) {
     return {
       agencyCode: user.agencyCode ?? undefined,
@@ -171,15 +193,13 @@ export function defaultScopeFor(role: UserRole, user: {
   if (isOfficer(role)) {
     return {
       agencyCode: user.agencyCode ?? undefined,
-      region: user.region === 'Nationwide' ? undefined : user.region,
+      region: user.region !== 'Nationwide' ? user.region : undefined,
+      onlyMine: false,
+      userId: user.id,
     };
   }
   return { onlyMine: true, userId: user.id };
 }
-
-// -----------------------------------------------------------------------------
-// UI labels
-// -----------------------------------------------------------------------------
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: 'Super Admin',
@@ -187,28 +207,14 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   police: 'Police Officer',
   health_inspector: 'Health Inspector',
   rank_marshal: 'Rank Marshal',
-  public: 'Public Citizen',
+  public: 'Public',
 };
 
-export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  super_admin: 'System owner. Manages users, agencies, config, branding, backups.',
-  admin: 'Operations manager. Assigns, escalates, closes cases. Nationwide.',
-  police: 'Field officer. Claims and resolves transport incidents.',
-  health_inspector: 'Field officer. Inspects food & trade establishments.',
-  rank_marshal: 'Field officer. Manages ranks and operator compliance.',
-  public: 'Citizen. Submits reports and tracks progress.',
-};
-
-export const TIER_LABELS = {
-  super_admin: 'System',
-  admin: 'Operations',
-  officer: 'Field',
-  public: 'Citizen',
-} as const;
-
-export function tierFor(role: UserRole): keyof typeof TIER_LABELS {
-  if (isSuperAdmin(role)) return 'super_admin';
-  if (isAdmin(role)) return 'admin';
-  if (isOfficer(role)) return 'officer';
-  return 'public';
-}
+export const ROLE_ORDER: UserRole[] = [
+  'super_admin',
+  'admin',
+  'police',
+  'health_inspector',
+  'rank_marshal',
+  'public',
+];
