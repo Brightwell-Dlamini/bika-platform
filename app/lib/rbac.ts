@@ -207,8 +207,33 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   police: 'Police Officer',
   health_inspector: 'Health Inspector',
   rank_marshal: 'Rank Marshal',
-  public: 'Public',
+  public: 'Public Citizen',
 };
+
+export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
+  super_admin:
+    'System owner. Agencies, branding, config, backups, and Super Admin roster.',
+  admin:
+    'Operations manager. Cases, command, analytics, staff roster, and hotlines.',
+  police: 'Field officer. Claims and resolves transport incidents.',
+  health_inspector: 'Field officer. Inspects food & trade establishments.',
+  rank_marshal: 'Field officer. Manages ranks and operator compliance.',
+  public: 'Citizen. Submits reports and tracks progress.',
+};
+
+export const TIER_LABELS = {
+  super_admin: 'System',
+  admin: 'Operations',
+  officer: 'Field',
+  public: 'Citizen',
+} as const;
+
+export function tierFor(role: UserRole): keyof typeof TIER_LABELS {
+  if (isSuperAdmin(role)) return 'super_admin';
+  if (isAdmin(role)) return 'admin';
+  if (isOfficer(role)) return 'officer';
+  return 'public';
+}
 
 export const ROLE_ORDER: UserRole[] = [
   'super_admin',
