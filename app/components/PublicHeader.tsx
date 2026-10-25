@@ -57,6 +57,7 @@ export function PublicHeader() {
 
   const trackActive = pathname.startsWith('/track') || pathname.startsWith('/r/');
   const reportActive = pathname.startsWith('/report') || pathname === '/';
+  const hotlinesActive = pathname.startsWith('/hotlines');
   const loginActive = pathname.startsWith('/login');
 
   return (
@@ -75,7 +76,6 @@ export function PublicHeader() {
             : 'bg-slate-950/85 backdrop-blur-xl border-slate-800/70'
         }`}
       >
-        {/* Status ribbon — hides when scrolled to free vertical space */}
         <div
           className={`overflow-hidden transition-[max-height,opacity] duration-200 ${
             scrolled ? 'max-h-0 opacity-0' : 'max-h-10 opacity-100'
@@ -120,7 +120,6 @@ export function PublicHeader() {
           )}
         </div>
 
-        {/* Main navbar */}
         <div
           className={`max-w-7xl mx-auto px-3 sm:px-6 flex items-center justify-between gap-3 transition-[height] duration-200 ${
             scrolled ? 'h-12' : 'h-14'
@@ -165,6 +164,9 @@ export function PublicHeader() {
             >
               Track
             </NavPill>
+            <NavPill href="/hotlines" active={hotlinesActive} icon={Phone}>
+              Hotlines
+            </NavPill>
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
@@ -175,15 +177,14 @@ export function PublicHeader() {
               </span>
             )}
 
-            {/* Mobile emergency — always reachable */}
-            <a
-              href="tel:999"
+            <Link
+              href="/hotlines"
               className="sm:hidden p-2 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800/60 transition"
-              title="Call 999"
-              aria-label="Call emergency 999"
+              title="Emergency hotlines"
+              aria-label="Emergency hotlines"
             >
               <Phone className="w-4 h-4" />
-            </a>
+            </Link>
 
             <button
               type="button"
