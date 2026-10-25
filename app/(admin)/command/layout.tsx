@@ -72,41 +72,10 @@ function CommandLayoutInner({ children }: { children: React.ReactNode }) {
 
   const user = me.data.user;
 
+  // Wall mode: page owns the living chrome — layout is a full-bleed shell only.
   if (kiosk) {
     return (
-      <div className="h-screen max-h-screen bg-[#070b12] text-slate-100 flex flex-col overflow-hidden">
-        <header className="h-11 flex items-center justify-between px-5 shrink-0 border-b border-white/5 bg-black/40">
-          <div className="flex items-center gap-3">
-            <img src="/Bika.png" alt="" className="w-7 h-7 object-contain" />
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,0.8)]" />
-              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-300">
-                BIKA · National Command Wall
-              </span>
-            </div>
-            <span className="hidden lg:inline text-[10px] text-slate-500 font-mono ml-2">
-              {new Date().toLocaleString('en-SZ', {
-                weekday: 'short',
-                day: '2-digit',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] text-slate-500 hidden sm:inline">
-              {user.region} · {ROLE_LABELS[user.role]}
-            </span>
-            <Link
-              href="/command"
-              className="text-[10px] font-bold text-slate-400 hover:text-yellow-400 px-2 py-1 rounded-lg hover:bg-white/5"
-              title="Exit wall mode"
-            >
-              Exit wall
-            </Link>
-          </div>
-        </header>
+      <div className="h-screen max-h-screen bg-[#05080f] text-slate-100 flex flex-col overflow-hidden">
         <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
       </div>
     );
@@ -137,6 +106,12 @@ function CommandLayoutInner({ children }: { children: React.ReactNode }) {
             <Maximize2 className="w-3 h-3" />
             Wall mode
           </Link>
+          <Link
+            href="/command?kiosk=1&layout=map"
+            className="hidden lg:inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-500 hover:text-yellow-400 px-2 py-1"
+          >
+            Map wall
+          </Link>
         </div>
 
         <div className="flex items-center gap-3">
@@ -148,21 +123,22 @@ function CommandLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
           <div className="w-7 h-7 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-xs text-yellow-400 overflow-hidden">
             {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
               <UserIcon className="w-3.5 h-3.5" />
             )}
           </div>
           <button
-            onClick={handleSignOut}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800"
+            type="button"
+            onClick={() => void handleSignOut()}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
             title="Sign out"
           >
             <LogOut className="w-4 h-4" />
           </button>
         </div>
       </header>
-
       <main className="flex-1 min-h-0 overflow-hidden">{children}</main>
     </div>
   );
