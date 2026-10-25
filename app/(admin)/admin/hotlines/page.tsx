@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { PhoneCall, Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHotlines } from '@/app/lib/api/hooks/useReference';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
-import { isSuperAdmin } from '@/app/lib/rbac';
+import { canManageHotlines } from '@/app/lib/rbac';
 import { useDeleteHotline } from '@/app/lib/api/mutations/useHotlineActions';
 import type { Hotline } from '@/app/types';
 import { HotlineFormModal } from './_components/HotlineFormModal';
@@ -17,7 +17,7 @@ export default function HotlinesPage() {
   const [editing, setEditing] = useState<Hotline | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const canManage = me.data ? isSuperAdmin(me.data.user.role) : false;
+  const canManage = me.data ? canManageHotlines(me.data.user.role) : false;
 
   const handleDelete = (h: Hotline) => {
     if (!confirm(`Delete hotline "${h.name}"?`)) return;
@@ -33,7 +33,8 @@ export default function HotlinesPage() {
         <div>
           <h1 className="text-2xl font-black text-white">Emergency hotlines</h1>
           <p className="text-xs text-slate-400 mt-1">
-            Shown on the citizen portal. {canManage ? '' : 'Super Admin required to edit.'}
+            Shown on the citizen portal.
+            {canManage ? '' : ' Read-only for your role.'}
           </p>
         </div>
         {canManage && (

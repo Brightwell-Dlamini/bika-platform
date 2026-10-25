@@ -4,8 +4,8 @@ import React, { useMemo, useState } from 'react';
 import { Plus, Search, Loader2, X } from 'lucide-react';
 import { useUsers, type UserFilters } from '@/app/lib/api/hooks/useUsers';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
-import { isSuperAdmin, ROLE_LABELS } from '@/app/lib/rbac';
-import { AGENCY_CODES, type User, type UserRole } from '@/app/types';
+import { canManageUsers, ROLE_LABELS } from '@/app/lib/rbac';
+import { AGENCY_CODES, type User } from '@/app/types';
 import { UserTable } from './_components/UserTable';
 import { UserFormModal } from './_components/UserFormModal';
 
@@ -17,7 +17,7 @@ export default function UsersPage() {
   const [editTarget, setEditTarget] = useState<User | null>(null);
 
   const users = useUsers(filters);
-  const canManage = me.data ? isSuperAdmin(me.data.user.role) : false;
+  const canManage = me.data ? canManageUsers(me.data.user.role) : false;
 
   const filtered = useMemo(() => {
     const list = users.data ?? [];
@@ -40,7 +40,9 @@ export default function UsersPage() {
           <h1 className="text-2xl font-black text-white">Users</h1>
           <p className="text-xs text-slate-400 mt-1">
             {users.data?.length ?? 0} account{users.data?.length === 1 ? '' : 's'}
-            {canManage ? ' · you can create and edit users' : ' · read-only (Super Admin required to edit)'}
+            {canManage
+              ? ' · you can create and edit staff accounts'
+              : ' · read-only'}
           </p>
         </div>
         {canManage && (
@@ -54,7 +56,6 @@ export default function UsersPage() {
         )}
       </div>
 
-      {/* Filter bar */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-500" />
@@ -123,22 +124,14 @@ export default function UsersPage() {
           {users.error.message}
         </div>
       ) : (
-        <UserTable
-          users={filtered}
-          canEdit={canManage}
-          onEdit={(u) => setEditTarget(u)}
-        />
+        <UserTable users={filtered} canEdit={canManage} onEdit={(u) => setEditTarget(u)} />
       )}
 
       {showCreate && canManage && (
         <UserFormModal mode="create" onClose={() => setShowCreate(false)} />
       )}
       {editTarget && canManage && (
-        <UserFormModal
-          mode="edit"
-          user={editTarget}
-          onClose={() => setEditTarget(null)}
-        />
+        <UserFormModal mode="edit" user={editTarget} onClose={() => setEditTarget(null)} />
       )}
     </div>
   );
