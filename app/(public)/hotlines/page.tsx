@@ -184,13 +184,13 @@ export default function PublicHotlinesPage() {
           <Phone className="w-6 h-6" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-red-300">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-black">
             Life-threatening emergency
           </div>
-          <div className="text-xl font-black text-white tabular-nums">Call 999</div>
-          <div className="text-xs text-red-100/70">Police · tap to dial</div>
+          <div className="text-xl font-black text-black tabular-nums">Call 999</div>
+          <div className="text-xs text-black/80">Police · tap to dial</div>
         </div>
-        <ExternalLink className="w-4 h-4 text-red-300/80 shrink-0" />
+        <ExternalLink className="w-4 h-4 text-black/70 shrink-0" />
       </a>
 
       {/* Filters */}
@@ -249,7 +249,7 @@ export default function PublicHotlinesPage() {
                   <li key={h.id}>
                     <a
                       href={telHref(h.number)}
-                      className="group flex items-stretch gap-3 sm:gap-4 rounded-2xl border border-white/[0.06] bg-[#0a0e16] p-3.5 sm:p-4 hover:border-yellow-500/30 hover:bg-[#0c121c] transition"
+                      className="group flex items-stretch gap-3 sm:gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-3.5 sm:p-4 hover:border-yellow-500/30 hover:bg-slate-800 transition"
                     >
                       <div
                         className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${meta.accent}`}

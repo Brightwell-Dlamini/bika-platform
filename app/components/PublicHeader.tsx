@@ -82,37 +82,37 @@ export function PublicHeader() {
           }`}
         >
           {online ? (
-            <div className="bg-gradient-to-r from-yellow-600 via-emerald-600 to-blue-600 text-[10px] sm:text-xs px-3 sm:px-4 py-1 flex items-center justify-between text-white">
+            <div className="brand-ribbon bg-gradient-to-r from-yellow-600 via-emerald-600 to-blue-600 text-[10px] sm:text-xs px-3 sm:px-4 py-1 flex items-center justify-between text-white">
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse shrink-0" aria-hidden />
-                <span className="truncate font-semibold tracking-wide">
+                <span className="truncate font-semibold tracking-wide text-white">
                   KINGDOM OF ESWATINI · NATIONAL REPORTING PLATFORM
                 </span>
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <a
                   href="tel:999"
-                  className="hidden sm:inline-flex items-center gap-1 font-mono hover:underline underline-offset-2"
+                  className="hidden sm:inline-flex items-center gap-1 font-mono hover:underline underline-offset-2 text-white"
                   title="Call emergency services"
                 >
                   <Phone className="w-3 h-3" />
                   999
                 </a>
                 <div className="flex items-center gap-1 bg-black/30 px-1.5 py-0.5 rounded" aria-live="polite">
-                  <Wifi className="w-3 h-3 text-emerald-300" aria-hidden />
-                  <span className="text-emerald-200 text-[10px]">ONLINE</span>
+                  <Wifi className="w-3 h-3 text-white" aria-hidden />
+                  <span className="text-white text-[10px] font-semibold">ONLINE</span>
                 </div>
               </div>
             </div>
           ) : (
             <div
-              className="bg-amber-600 text-[10px] sm:text-xs px-3 sm:px-4 py-1.5 flex items-center justify-center gap-2 text-amber-950 font-bold"
+              className="brand-ribbon bg-amber-600 text-[10px] sm:text-xs px-3 sm:px-4 py-1.5 flex items-center justify-center gap-2 text-white font-bold"
               role="status"
               aria-live="assertive"
             >
-              <WifiOff className="w-3.5 h-3.5" />
-              <span>You are offline — tracking may be limited until connection returns</span>
-              <a href="tel:999" className="ml-2 inline-flex items-center gap-1 underline underline-offset-2">
+              <WifiOff className="w-3.5 h-3.5 text-white" />
+              <span className="text-white">You are offline — tracking may be limited until connection returns</span>
+              <a href="tel:999" className="ml-2 inline-flex items-center gap-1 underline underline-offset-2 text-white">
                 <Phone className="w-3 h-3" />
                 999
               </a>
@@ -130,18 +130,18 @@ export function PublicHeader() {
             className="flex items-center gap-2.5 group shrink-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500"
           >
             <div
-              className={`rounded-xl bg-slate-900 border border-yellow-500/50 p-0.5 shadow-md shadow-yellow-500/10 group-hover:border-yellow-400 transition ${
+              className={`rounded-xl bg-slate-900 p-0.5 shadow-md shadow-yellow-500/10 group-hover:shadow-yellow-500/20 transition ${
                 scrolled ? 'w-8 h-8' : 'w-9 h-9'
               }`}
             >
               <img src="/Bika.png" alt="" className="w-full h-full object-contain" />
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs font-black text-white tracking-tight group-hover:text-yellow-400 transition leading-none">
+              <div className="text-xs font-black text-white tracking-tight group-hover:text-yellow-400 transition leading-none logo-wordmark">
                 BIKA
               </div>
               {!scrolled && (
-                <div className="text-[9px] text-slate-500 font-mono tracking-wider mt-0.5">
+                <div className="text-[9px] text-slate-500 font-mono tracking-wider mt-0.5 logo-tagline">
                   REPORT · TRACK · RESPOND
                 </div>
               )}
@@ -236,7 +236,7 @@ function NavPill({
       className={`relative inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 ${
         active
           ? 'bg-yellow-500 text-slate-950 shadow-sm'
-          : 'text-slate-400 hover:text-white hover:bg-slate-800/80 hover:scale-[1.02]'
+          : 'text-slate-400 hover:text-yellow-500 hover:bg-slate-800/80 hover:scale-[1.02]'
       }`}
     >
       <Icon className="w-3.5 h-3.5" />
