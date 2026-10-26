@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="BIKA">
+  <!--
+    Maskable: background bleeds edge-to-edge.
+    Mark stays inside the 80% safe circle (radius 40% of canvas).
+    No decorative ring or card — the OS supplies the shape.
+  -->
+  <rect width="512" height="512" fill="#020617"/>
+  <g transform="translate(256 256)">
+    <text
+      x="0"
+      y="20"
+      text-anchor="middle"
+      font-family="system-ui, -apple-system, Segoe UI, sans-serif"
+      font-size="150"
+      font-weight="800"
+      fill="#eab308"
+      letter-spacing="-0.04em"
+    >B</text>
+  </g>
+</svg>

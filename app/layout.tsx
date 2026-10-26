@@ -12,12 +12,11 @@ export const metadata: Metadata = {
     'Kingdom of Eswatini official integrated real-time incident, transport and trade reporting platform. See something, say something.',
   icons: {
     icon: [
-      { url: '/Bika.png', type: 'image/png' },
-      { url: '/Bika.png', sizes: '32x32', type: 'image/png' },
-      { url: '/Bika.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-192.svg', type: 'image/svg+xml', sizes: '192x192' },
+      { url: '/icons/icon-512.svg', type: 'image/svg+xml', sizes: '512x512' },
     ],
-    shortcut: '/Bika.png',
-    apple: [{ url: '/Bika.png', type: 'image/png' }],
+    shortcut: '/icons/icon-192.svg',
+    apple: [{ url: '/icons/icon-512.svg', type: 'image/svg+xml', sizes: '512x512' }],
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -36,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  themeColor: '#020617',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -64,8 +63,8 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="icon" href="/Bika.png" type="image/png" />
-        <link rel="apple-touch-icon" href="/Bika.png" />
+        <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml" />
+        <link rel="apple-touch-icon" href="/icons/icon-512.svg" />
       </head>
       <body className={inter.className}>
         <a
