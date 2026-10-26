@@ -22,6 +22,7 @@ import { apiFetch } from '@/app/lib/api/fetcher';
 import { qk } from '@/app/lib/api/queryKeys';
 import { ROLE_LABELS, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
 import { SessionIdleGuard } from '@/app/components/SessionIdleGuard';
+import { NotificationBell } from '@/app/components/NotificationBell';
 import { toast } from 'sonner';
 
 export default function OfficerLayout({ children }: { children: React.ReactNode }) {
@@ -169,6 +170,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
           </nav>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
+            <NotificationBell />
             <button
               type="button"
               onClick={toggleDuty}
