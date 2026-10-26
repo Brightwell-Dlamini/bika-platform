@@ -1,29 +1,25 @@
 import 'server-only';
 import { env } from '@/app/lib/env';
 import { logger } from '@/app/lib/logger';
+import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 /**
- * BIKA v2 — Notification channel adapters.
- *
- * Each adapter:
- * - Accepts a normalized payload
- * - Returns a small status string ('sent', 'skipped', 'error: ...', 'http_500')
- * - Never throws — failures are captured and reported, not propagated
- *
- * The dispatcher decides which channels to call. This file just delivers.
+ * BIKA notification channels.
+ * Primary: in_app + push. Legacy webhook/email/sms remain optional and unused by defaults.
  */
 
-export type ChannelName = 'webhook' | 'email' | 'sms';
+export type ChannelName = 'in_app' | 'push' | 'webhook' | 'email' | 'sms';
 
 export interface NotificationPayload {
-  /** Short subject line for email/SMS. */
   subject: string;
-  /** Full message body. SMS will be truncated. */
   body: string;
-  /** Optional recipient overrides. Falls back to env defaults. */
   toPhone?: string;
   toEmail?: string;
-  /** Free-form data included in webhook payload. */
+  /** Profile IDs that should receive in_app / push. */
+  recipientUserIds?: string[];
+  href?: string;
+  incidentId?: string;
+  eventType?: string;
   data?: Record<string, unknown>;
 }
 
@@ -33,13 +29,122 @@ export interface ChannelResult {
 }
 
 // -----------------------------------------------------------------------------
-// Webhook — generic POST to a configurable URL
+// In-app — persist to notifications table
+// -----------------------------------------------------------------------------
+
+export async function sendInApp(payload: NotificationPayload): Promise<ChannelResult> {
+  const ids = payload.recipientUserIds?.filter(Boolean) ?? [];
+  if (ids.length === 0) {
+    return { channel: 'in_app', status: 'skipped_no_recipient' };
+  }
+
+  try {
+    const supabase = createServiceSupabase();
+    const rows = ids.map((userId) => ({
+      user_id: userId,
+      title: payload.subject.slice(0, 200),
+      body: payload.body.slice(0, 2000),
+      href: payload.href ?? null,
+      incident_id: payload.incidentId ?? null,
+      event_type: payload.eventType ?? 'general',
+    }));
+
+    const { error } = await supabase.from('notifications').insert(rows);
+    if (error) {
+      logger.warn('notify_in_app_failed', { error: error.message, count: ids.length });
+      return { channel: 'in_app', status: 'error' };
+    }
+    return { channel: 'in_app', status: 'sent' };
+  } catch (err) {
+    logger.warn('notify_in_app_threw', { error: String(err) });
+    return { channel: 'in_app', status: 'error' };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Web Push — requires VAPID keys + web-push package
+// -----------------------------------------------------------------------------
+
+export async function sendPush(payload: NotificationPayload): Promise<ChannelResult> {
+  const ids = payload.recipientUserIds?.filter(Boolean) ?? [];
+  if (ids.length === 0) {
+    return { channel: 'push', status: 'skipped_no_recipient' };
+  }
+
+  const publicKey = process.env.VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  const subject = process.env.VAPID_SUBJECT ?? 'mailto:ops@bika.gov.sz';
+
+  if (!publicKey || !privateKey) {
+    return { channel: 'push', status: 'skipped_not_configured' };
+  }
+
+  try {
+    // Optional dependency — degrade if not installed
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const webpush = await import('web-push').catch(() => null);
+    if (!webpush) {
+      return { channel: 'push', status: 'skipped_no_module' };
+    }
+
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+
+    const supabase = createServiceSupabase();
+    const { data: subs, error } = await supabase
+      .from('push_subscriptions')
+      .select('id, endpoint, p256dh, auth')
+      .in('user_id', ids);
+
+    if (error || !subs?.length) {
+      return { channel: 'push', status: subs?.length ? 'error' : 'skipped_no_subscription' };
+    }
+
+    const body = JSON.stringify({
+      title: payload.subject.slice(0, 120),
+      body: payload.body.slice(0, 180),
+      href: payload.href ?? '/officer',
+      incidentId: payload.incidentId ?? null,
+    });
+
+    let sent = 0;
+    for (const sub of subs) {
+      try {
+        await webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          body,
+          { TTL: 60 * 60 }
+        );
+        sent += 1;
+      } catch (err: unknown) {
+        const statusCode =
+          err && typeof err === 'object' && 'statusCode' in err
+            ? Number((err as { statusCode?: number }).statusCode)
+            : 0;
+        // Gone / unsubscribed — drop row
+        if (statusCode === 404 || statusCode === 410) {
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+        } else {
+          logger.warn('notify_push_one_failed', { endpoint: sub.endpoint.slice(0, 48), statusCode });
+        }
+      }
+    }
+
+    return { channel: 'push', status: sent > 0 ? 'sent' : 'error' };
+  } catch (err) {
+    logger.warn('notify_push_threw', { error: String(err) });
+    return { channel: 'push', status: 'error' };
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Legacy optional channels (not used by default)
 // -----------------------------------------------------------------------------
 
 export async function sendWebhook(payload: NotificationPayload): Promise<ChannelResult> {
-  if (!env.NOTIFY_WEBHOOK_URL) {
-    return { channel: 'webhook', status: 'skipped' };
-  }
+  if (!env.NOTIFY_WEBHOOK_URL) return { channel: 'webhook', status: 'skipped' };
   try {
     const res = await fetch(env.NOTIFY_WEBHOOK_URL, {
       method: 'POST',
@@ -59,18 +164,10 @@ export async function sendWebhook(payload: NotificationPayload): Promise<Channel
   }
 }
 
-// -----------------------------------------------------------------------------
-// Email via Resend
-// -----------------------------------------------------------------------------
-
 export async function sendEmail(payload: NotificationPayload): Promise<ChannelResult> {
-  if (!env.RESEND_API_KEY) {
-    return { channel: 'email', status: 'skipped' };
-  }
+  if (!env.RESEND_API_KEY) return { channel: 'email', status: 'skipped' };
   const to = payload.toEmail ?? env.NOTIFY_TO_EMAIL;
-  if (!to) {
-    return { channel: 'email', status: 'skipped_no_recipient' };
-  }
+  if (!to) return { channel: 'email', status: 'skipped_no_recipient' };
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -92,19 +189,13 @@ export async function sendEmail(payload: NotificationPayload): Promise<ChannelRe
   }
 }
 
-// -----------------------------------------------------------------------------
-// SMS via Twilio
-// -----------------------------------------------------------------------------
-
 export async function sendSms(payload: NotificationPayload): Promise<ChannelResult> {
   const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM } = env;
   if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_FROM) {
     return { channel: 'sms', status: 'skipped' };
   }
   const to = payload.toPhone ?? env.NOTIFY_SMS_TO;
-  if (!to) {
-    return { channel: 'sms', status: 'skipped_no_recipient' };
-  }
+  if (!to) return { channel: 'sms', status: 'skipped_no_recipient' };
   try {
     const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
     const params = new URLSearchParams({
@@ -130,11 +221,12 @@ export async function sendSms(payload: NotificationPayload): Promise<ChannelResu
   }
 }
 
-// -----------------------------------------------------------------------------
-// Channel registry
-// -----------------------------------------------------------------------------
-
-export const CHANNELS: Record<ChannelName, (payload: NotificationPayload) => Promise<ChannelResult>> = {
+export const CHANNELS: Record<
+  ChannelName,
+  (payload: NotificationPayload) => Promise<ChannelResult>
+> = {
+  in_app: sendInApp,
+  push: sendPush,
   webhook: sendWebhook,
   email: sendEmail,
   sms: sendSms,
@@ -142,6 +234,10 @@ export const CHANNELS: Record<ChannelName, (payload: NotificationPayload) => Pro
 
 export function isChannelConfigured(channel: ChannelName): boolean {
   switch (channel) {
+    case 'in_app':
+      return true;
+    case 'push':
+      return Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
     case 'webhook':
       return Boolean(env.NOTIFY_WEBHOOK_URL);
     case 'email':
