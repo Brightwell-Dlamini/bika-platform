@@ -20,6 +20,7 @@ import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
 import { useIncidentsRealtime } from '@/app/lib/api/hooks/useRealtime';
 import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
 import { canRunWork, isSuperAdmin, ROLE_LABELS } from '@/app/lib/rbac';
+import { SessionIdleGuard } from '@/app/components/SessionIdleGuard';
 import { toast } from 'sonner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -77,7 +78,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   // Command Centre (incl. wall mode) owns its own full-bleed chrome — do not
   // stack the ops shell navbar or a second avatar/logout cluster.
   if (pathname.startsWith('/command')) {
-    return <>{children}</>;
+    return (
+      <>
+        <SessionIdleGuard />
+        {children}
+      </>
+    );
   }
 
   const isSuper = isSuperAdmin(user.role);
@@ -117,7 +123,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="min-h-screen bg-[#05080f] text-slate-100 flex flex-col">
-      {/* Ambient top glow */}
+      <SessionIdleGuard />
       <div
         className="pointer-events-none fixed inset-x-0 top-0 h-40 bg-gradient-to-b from-yellow-500/[0.06] to-transparent z-0"
         aria-hidden
@@ -125,7 +131,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#070b12]/85 backdrop-blur-xl">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-5 h-[3.6rem] flex items-center justify-between gap-3">
-          {/* Brand */}
           <Link
             href="/admin"
             className="flex items-center gap-2.5 shrink-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500"
@@ -144,7 +149,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </Link>
 
-          {/* Primary nav — pill rail */}
           <nav
             className="hidden lg:flex items-center gap-0.5 p-1 rounded-2xl bg-white/[0.03] border border-white/[0.06] shadow-inner"
             aria-label="Admin"
@@ -170,7 +174,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
 
-          {/* User cluster — single instance */}
           <div className="flex items-center gap-2 shrink-0">
             <Link
               href="/officer"
@@ -217,7 +220,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        {/* Mobile nav strip */}
         <nav
           className="lg:hidden flex gap-1 overflow-x-auto px-3 pb-2 scrollbar-none"
           aria-label="Admin mobile"

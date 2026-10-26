@@ -21,6 +21,7 @@ import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
 import { apiFetch } from '@/app/lib/api/fetcher';
 import { qk } from '@/app/lib/api/queryKeys';
 import { ROLE_LABELS, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
+import { SessionIdleGuard } from '@/app/components/SessionIdleGuard';
 import { toast } from 'sonner';
 
 export default function OfficerLayout({ children }: { children: React.ReactNode }) {
@@ -142,6 +143,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <SessionIdleGuard />
       <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-3">
           <Link href="/officer" className="flex items-center gap-2.5 shrink-0 group">
@@ -255,8 +257,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
                   </span>
                   {item.badge != null && item.badge > 0 && (
                     <span
-                      className={`absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${
-                        item.urgent ? 'bg-rose-500 text-white' : 'bg-yellow-500 text-slate-950'
+                      className={`absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${\n                        item.urgent ? 'bg-rose-500 text-white' : 'bg-yellow-500 text-slate-950'
                       }`}
                     >
                       {item.badge > 9 ? '9+' : item.badge}
