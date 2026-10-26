@@ -17,7 +17,7 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function NotificationBell() {
-  const { data, isLoading } = useNotifications(true);
+  const { data, isLoading, error } = useNotifications(true);
   const markRead = useMarkNotificationsRead();
   const [open, setOpen] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
@@ -135,7 +135,12 @@ export function NotificationBell() {
                 <Loader2 className="w-4 h-4 animate-spin" /> Loading…
               </div>
             )}
-            {!isLoading && items.length === 0 && (
+            {!isLoading && error && (
+              <div className="p-6 text-center text-xs text-red-300">
+                {error instanceof Error ? error.message : 'Could not load notifications.'}
+              </div>
+            )}
+            {!isLoading && !error && items.length === 0 && (
               <div className="p-6 text-center text-xs text-slate-500">No notifications yet.</div>
             )}
             {items.map((n) => {

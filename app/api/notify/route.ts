@@ -13,9 +13,11 @@ const bodySchema = z.object({
   incidentId: z.string().optional(),
   eventType: z.string().min(1).max(80),
   channels: z
-    .array(z.enum(['webhook', 'email', 'sms']))
+    .array(z.enum(['in_app', 'webhook', 'email', 'sms']))
     .min(1)
-    .default(['webhook']),
+    .default(['in_app']),
+  recipientUserIds: z.array(z.string().min(1)).max(50).optional(),
+  href: z.string().max(500).optional(),
   subject: z.string().min(1).max(200),
   body: z.string().min(1).max(4000),
   toPhone: z.string().max(40).optional(),
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest) {
     channels: input.channels as ChannelName[],
     incidentId: input.incidentId,
     eventType: input.eventType,
+    recipientUserIds: input.recipientUserIds,
+    href: input.href,
     payload: {
       subject: input.subject,
       body: input.body,

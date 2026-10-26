@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
-import { dispatch } from '@/app/lib/notifications/dispatcher';
+import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
 import { slaBreachAlert } from '@/app/lib/notifications/templates';
 import { logger } from '@/app/lib/logger';
 import { env } from '@/app/lib/env';
@@ -102,9 +102,11 @@ export async function GET(req: NextRequest) {
     if (!recentLog || recentLog.length === 0) {
       const msg = slaBreachAlert(incident, overdueMins);
       const result = await dispatch({
-        channels: ['webhook', 'email'],
+        channels: defaultStaffChannels(),
         incidentId: incident.id,
         eventType: 'sla.breach',
+        recipientUserIds: incident.assignedOfficerId ? [incident.assignedOfficerId] : undefined,
+        href: `/officer/case/${incident.id}`,
         payload: {
           subject: msg.subject,
           body: msg.body,

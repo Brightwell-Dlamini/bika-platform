@@ -1,0 +1,290 @@
+.
+├── app
+│   ├── (admin)
+│   │   ├── admin
+│   │   │   ├── hotlines
+│   │   │   │   ├── _components
+│   │   │   │   │   └── HotlineFormModal.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── system
+│   │   │   │   ├── _components
+│   │   │   │   │   ├── AuditTab.tsx
+│   │   │   │   │   ├── BackupTab.tsx
+│   │   │   │   │   ├── BrandingTab.tsx
+│   │   │   │   │   └── ConfigTab.tsx
+│   │   │   │   └── page.tsx
+│   │   │   └── users
+│   │   │       ├── _components
+│   │   │       │   ├── UserFormModal.tsx
+│   │   │       │   └── UserTable.tsx
+│   │   │       └── page.tsx
+│   │   ├── analytics
+│   │   │   ├── _components
+│   │   │   │   ├── BarChart.tsx
+│   │   │   │   └── ExportPanel.tsx
+│   │   │   └── page.tsx
+│   │   ├── command
+│   │   │   ├── _components
+│   │   │   │   ├── FilterBar.tsx
+│   │   │   │   ├── KpiRail.tsx
+│   │   │   │   ├── LiveFeed.tsx
+│   │   │   │   ├── MapOverlayLayers.tsx
+│   │   │   │   ├── MapPanel.tsx
+│   │   │   │   └── WallChrome.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   └── layout.tsx
+│   ├── api
+│   │   ├── admin
+│   │   │   ├── audit
+│   │   │   │   └── route.ts
+│   │   │   ├── hotlines
+│   │   │   │   ├── [id]
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── route.ts
+│   │   │   ├── system
+│   │   │   │   ├── config
+│   │   │   │   │   └── route.ts
+│   │   │   │   └── logos
+│   │   │   │       └── route.ts
+│   │   │   └── users
+│   │   │       ├── [id]
+│   │   │       │   └── route.ts
+│   │   │       └── route.ts
+│   │   ├── analytics
+│   │   │   ├── kpis
+│   │   │   │   └── route.ts
+│   │   │   ├── regions
+│   │   │   │   └── route.ts
+│   │   │   ├── sla
+│   │   │   │   └── route.ts
+│   │   │   └── trends
+│   │   │       └── route.ts
+│   │   ├── automation
+│   │   │   └── incident
+│   │   │       └── route.ts
+│   │   ├── cron
+│   │   │   └── sla-check
+│   │   │       └── route.ts
+│   │   ├── health
+│   │   │   └── route.ts
+│   │   ├── notifications
+│   │   │   ├── push
+│   │   │   │   └── route.ts
+│   │   │   ├── route.ts
+│   │   │   └── vapid
+│   │   │       └── route.ts
+│   │   ├── notify
+│   │   │   └── route.ts
+│   │   ├── officer
+│   │   │   └── me
+│   │   │       └── route.ts
+│   │   ├── receipt
+│   │   │   └── route.ts
+│   │   ├── reference
+│   │   │   └── [kind]
+│   │   │       └── route.ts
+│   │   ├── reports
+│   │   │   ├── [id]
+│   │   │   │   ├── acknowledge
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── assign
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── notes
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── rate
+│   │   │   │   │   └── route.ts
+│   │   │   │   ├── route.ts
+│   │   │   │   └── transition
+│   │   │   │       └── route.ts
+│   │   │   └── route.ts
+│   │   └── ussd
+│   │       └── route.ts
+│   ├── components
+│   │   ├── NotificationBell.tsx
+│   │   ├── providers
+│   │   │   └── ThemeProvider.tsx
+│   │   ├── PublicFooter.tsx
+│   │   ├── PublicHeader.tsx
+│   │   ├── PublicMobileNav.tsx
+│   │   ├── PwaRegister.tsx
+│   │   ├── SessionIdleGuard.tsx
+│   │   └── ui
+│   │       ├── EmptyState.tsx
+│   │       ├── ErrorState.tsx
+│   │       └── LoadingState.tsx
+│   ├── error.tsx
+│   ├── global-error.tsx
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── lib
+│   │   ├── api
+│   │   │   ├── fetcher.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── useAnalytics.ts
+│   │   │   │   ├── useAuditLogs.ts
+│   │   │   │   ├── useIncidents.ts
+│   │   │   │   ├── useIncident.ts
+│   │   │   │   ├── useNotifications.ts
+│   │   │   │   ├── useOfficerMe.ts
+│   │   │   │   ├── useRealtime.ts
+│   │   │   │   ├── useReference.ts
+│   │   │   │   └── useUsers.ts
+│   │   │   ├── mutations
+│   │   │   │   ├── useHotlineActions.ts
+│   │   │   │   ├── useIncidentActions.ts
+│   │   │   │   ├── useSubmitReport.ts
+│   │   │   │   ├── useSystemActions.ts
+│   │   │   │   └── useUserActions.ts
+│   │   │   └── queryKeys.ts
+│   │   ├── auth.ts
+│   │   ├── automation
+│   │   │   ├── incident.ts
+│   │   │   └── sla.ts
+│   │   ├── env.ts
+│   │   ├── export.ts
+│   │   ├── geo.ts
+│   │   ├── hooks
+│   │   │   ├── useDraft.ts
+│   │   │   └── useKeyboardShortcuts.ts
+│   │   ├── i18n.tsx
+│   │   ├── logger.ts
+│   │   ├── mappers
+│   │   │   └── incident.ts
+│   │   ├── myReports.ts
+│   │   ├── notifications
+│   │   │   ├── channels.ts
+│   │   │   ├── dispatcher.ts
+│   │   │   ├── templates.ts
+│   │   │   └── types.ts
+│   │   ├── officerTemplates.ts
+│   │   ├── rateLimit.ts
+│   │   ├── rbac.ts
+│   │   ├── schemas.ts
+│   │   ├── statusLabels.ts
+│   │   ├── statusTransitions.ts
+│   │   ├── storage
+│   │   │   └── rehomeAttachments.ts
+│   │   ├── supabase
+│   │   │   ├── admin.ts
+│   │   │   ├── browser.ts
+│   │   │   └── server.ts
+│   │   ├── uploads.ts
+│   │   └── utils
+│   │       └── referenceId.ts
+│   ├── login
+│   │   └── page.tsx
+│   ├── not-found.tsx
+│   ├── (officer)
+│   │   ├── layout.tsx
+│   │   ├── officer
+│   │   │   ├── case
+│   │   │   │   └── [id]
+│   │   │   │       ├── _components
+│   │   │   │       │   ├── AssignDialog.tsx
+│   │   │   │       │   ├── CaseActions.tsx
+│   │   │   │       │   ├── CaseHeader.tsx
+│   │   │   │       │   ├── CaseKeyboardNav.tsx
+│   │   │   │       │   ├── CaseNoteInput.tsx
+│   │   │   │       │   └── CaseTimeline.tsx
+│   │   │   │       └── page.tsx
+│   │   │   ├── page.tsx
+│   │   │   ├── profile
+│   │   │   │   └── page.tsx
+│   │   │   ├── queue
+│   │   │   │   ├── _components
+│   │   │   │   │   └── QueueKeyboardNav.tsx
+│   │   │   │   └── page.tsx
+│   │   │   └── reassign
+│   │   │       └── page.tsx
+│   │   └── profile
+│   │       └── page.tsx
+│   ├── page.tsx
+│   ├── providers
+│   │   ├── AppProviders.tsx
+│   │   ├── LanguageProvider.tsx
+│   │   ├── QueryProvider.tsx
+│   │   └── ThemeProvider.tsx
+│   ├── (public)
+│   │   ├── hotlines
+│   │   │   └── page.tsx
+│   │   ├── layout.tsx
+│   │   ├── r
+│   │   │   └── [id]
+│   │   │       └── page.tsx
+│   │   ├── report
+│   │   │   ├── _components
+│   │   │   │   ├── DetailsStep.tsx
+│   │   │   │   ├── NearbyReportsHint.tsx
+│   │   │   │   ├── ProgressBar.tsx
+│   │   │   │   ├── ReviewStep.tsx
+│   │   │   │   ├── SectorStep.tsx
+│   │   │   │   ├── SuccessStep.tsx
+│   │   │   │   └── TypeStep.tsx
+│   │   │   └── page.tsx
+│   │   └── track
+│   │       └── page.tsx
+│   └── types
+│       ├── analytics.ts
+│       └── index.ts
+├── docs
+│   ├── DEPLOYMENT.MD
+│   ├── ENHANCEMENTS.md
+│   ├── GAP_CHECKLIST.md
+│   ├── GO_LIVE.md
+│   ├── HARDENING_NOTES.md
+│   ├── HOSTING_COST_OUTLOOK.md
+│   ├── HOSTINGER_DEPLOY.md
+│   ├── INVOICE.md
+│   ├── OPERATING_LAYER.md
+│   ├── OPS_RUNBOOK.md
+│   ├── PHASE1_STATUS.md
+│   ├── PHASE2_STATUS.md
+│   ├── PHASE3_STATUS.md
+│   ├── PRODUCTION_CHECKLIST.md
+│   ├── USER_FLOWS.md
+│   ├── USSD.md
+│   ├── VISION_CHECKLIST.md
+│   ├── WORK_REPORT.md
+│   └── WORLD_CLASS_ROADMAP.md
+├── middleware.ts
+├── next.config.js
+├── package.json
+├── postcss.config.js
+├── public
+│   ├── Bika1.png
+│   ├── Bika2.png
+│   ├── Bika.png
+│   ├── favicon.ico
+│   ├── geo
+│   │   └── eswatini-regions.json
+│   ├── icons
+│   │   ├── apple-touch-icon.png
+│   │   ├── icon-192.png
+│   │   ├── icon-192.svg
+│   │   ├── icon-512.png
+│   │   ├── icon-512.svg
+│   │   ├── icon-maskable-192.png
+│   │   ├── icon-maskable-512.png
+│   │   ├── icon-maskable.svg
+│   │   └── icon.svg
+│   ├── manifest.json
+│   ├── robots.txt
+│   └── sw.js
+├── README.md
+├── scripts
+│   ├── smoke-reference-id.mjs
+│   └── smoke-transitions.mjs
+├── supabase
+│   ├── migrations
+│   │   ├── 000_reset.sql
+│   │   ├── 009_production_go_live.sql
+│   │   └── 010_notifications.sql
+│   └── NUKE_AND_REBUILD_V1.sql
+├── tailwind.config.js
+├── tree.txt
+├── tsconfig.json
+└── vercel.json
+
+92 directories, 196 files

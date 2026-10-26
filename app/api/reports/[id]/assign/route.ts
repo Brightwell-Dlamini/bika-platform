@@ -7,7 +7,7 @@ import {
 import { isPublic, canRunWork } from '@/app/lib/rbac';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
-import { dispatch } from '@/app/lib/notifications/dispatcher';
+import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
 import { officerAssignment } from '@/app/lib/notifications/templates';
 import { mapIncident } from '@/app/lib/mappers/incident';
 import type { ApiResponse, Incident } from '@/app/types';
@@ -211,9 +211,11 @@ async function notifyAssignedOfficer(
   const msg = officerAssignment(incident, officerName);
 
   await dispatch({
-    channels: ['webhook', 'email'],
+    channels: defaultStaffChannels(),
     incidentId,
     eventType: 'officer.assigned',
+    recipientUserIds: [officerId],
+    href: `/officer/case/${incidentId}`,
     payload: {
       subject: msg.subject,
       body: msg.body,
