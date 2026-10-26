@@ -3,7 +3,7 @@ import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/serv
 import { isPublic } from '@/app/lib/rbac';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
-import { rateLimit, clientIpFromHeaders } from '@/app/lib/rateLimit';
+import { rateLimitAsync, clientIpFromHeaders } from '@/app/lib/rateLimit';
 import { mapIncident, mapEvent, stripIncidentPII } from '@/app/lib/mappers/incident';
 import type { ApiResponse, Incident, IncidentEvent } from '@/app/types';
 
@@ -23,7 +23,11 @@ export async function GET(
   const id = normalizeReferenceId(rawId);
 
   if (!id) {
-    const body: ApiResponse<never> = { ok: false, code: 'BAD_REQUEST', error: 'Missing reference id.' };
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'BAD_REQUEST',
+      error: 'Missing reference id.',
+    };
     return NextResponse.json(body, { status: 400 });
   }
 
@@ -33,7 +37,7 @@ export async function GET(
   // Throttle public lookups (scraping / enumeration)
   if (isPublicCaller) {
     const key = `lookup:${clientIpFromHeaders(req.headers)}`;
-    const rl = rateLimit(key, 30);
+    const rl = await rateLimitAsync(key, 30);
     if (!rl.allowed) {
       logger.warn('incident_lookup_rate_limited', { requestId, incidentId: id });
       const body: ApiResponse<never> = {
@@ -57,12 +61,24 @@ export async function GET(
     .maybeSingle();
 
   if (error) {
-    logger.error('incident_fetch_failed', { requestId, incidentId: id, error: error.message });
-    const body: ApiResponse<never> = { ok: false, code: 'DB_ERROR', error: 'Could not load incident.' };
+    logger.error('incident_fetch_failed', {
+      requestId,
+      incidentId: id,
+      error: error.message,
+    });
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'DB_ERROR',
+      error: 'Could not load incident.',
+    };
     return NextResponse.json(body, { status: 500 });
   }
   if (!incident) {
-    const body: ApiResponse<never> = { ok: false, code: 'NOT_FOUND', error: 'Report not found.' };
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'NOT_FOUND',
+      error: 'Report not found.',
+    };
     return NextResponse.json(body, { status: 404 });
   }
 

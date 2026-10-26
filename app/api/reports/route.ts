@@ -17,6 +17,7 @@ import { logger, newRequestId } from '@/app/lib/logger';
 import { isPublic, isOfficer, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
 import { rateLimitAsync, clientIpFromHeaders } from '@/app/lib/rateLimit';
 import { mapIncident } from '@/app/lib/mappers/incident';
+import { rehomeAttachments } from '@/app/lib/storage/rehomeAttachments';
 import type { ApiResponse, Incident } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
@@ -80,6 +81,22 @@ export async function POST(req: NextRequest) {
   const id = generateReferenceId();
   const now = new Date().toISOString();
 
+  // Rehome evidence under the new incident id before persisting final URLs
+  let attachments = (input.attachments ?? []) as Array<Record<string, unknown>>;
+  try {
+    attachments = (await rehomeAttachments(
+      supabase,
+      id,
+      attachments
+    )) as Array<Record<string, unknown>>;
+  } catch (err) {
+    logger.warn('report_attachment_rehome_skipped', {
+      requestId,
+      incidentId: id,
+      error: String(err),
+    });
+  }
+
   const row = {
     id,
     report_type: input.reportType,
@@ -102,7 +119,7 @@ export async function POST(req: NextRequest) {
     establishment_name: input.establishmentName ?? null,
 
     coordinates: input.coordinates ?? null,
-    attachments: input.attachments,
+    attachments,
 
     created_at: now,
     updated_at: now,
@@ -149,6 +166,7 @@ export async function POST(req: NextRequest) {
     region: input.region,
     severity: input.severity,
     reportType: input.reportType,
+    attachmentCount: attachments.length,
   });
 
   let automation: Awaited<ReturnType<typeof runIncidentAutomation>> | null = null;

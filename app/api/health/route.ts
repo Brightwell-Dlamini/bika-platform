@@ -4,7 +4,7 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-const PLATFORM_VERSION = '6.1.0';
+const PLATFORM_VERSION = '6.1.1';
 
 export async function GET() {
   const health = getEnvHealth();
@@ -17,7 +17,6 @@ export async function GET() {
     const t0 = Date.now();
     try {
       const supabase = createServiceSupabase();
-      // Lightweight probe — avoid count(*) which is expensive under load
       const { error } = await supabase
         .from('incidents')
         .select('id')

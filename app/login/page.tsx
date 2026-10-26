@@ -14,7 +14,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { signInWithPassword } from '@/app/lib/auth';
+import { signInWithPassword, signOut } from '@/app/lib/auth';
 import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
 
 export default function LoginPage() {
@@ -33,8 +33,13 @@ export default function LoginPage() {
         const supabase = getSupabaseBrowserClient();
         const { data } = await supabase.auth.getUser();
         if (!cancelled && data.user) {
-          router.replace('/officer');
-          return;
+          // Confirm active official profile before entering ops
+          const res = await fetch('/api/officer/me', { credentials: 'include' });
+          if (res.ok) {
+            router.replace('/officer');
+            return;
+          }
+          await signOut();
         }
       } catch {
         /* not configured */
@@ -57,6 +62,21 @@ export default function LoginPage() {
         setErrorMessage(result.error ?? 'Sign-in failed.');
         return;
       }
+
+      // Block deactivated or non-official accounts immediately
+      const meRes = await fetch('/api/officer/me', { credentials: 'include' });
+      if (!meRes.ok) {
+        await signOut();
+        if (meRes.status === 403) {
+          setErrorMessage('This account has been deactivated. Contact your Super Admin.');
+        } else {
+          setErrorMessage(
+            'Signed in, but no active official profile is linked to this email. Contact your Super Admin.'
+          );
+        }
+        return;
+      }
+
       toast.success('Signed in.');
       router.replace('/officer');
     } finally {
