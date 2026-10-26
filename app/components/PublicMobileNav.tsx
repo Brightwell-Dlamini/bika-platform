@@ -6,17 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Search, Phone, WifiOff, Plus } from 'lucide-react';
 import { getMyReports } from '@/app/lib/myReports';
 
-function focusSectorPicker() {
-  if (typeof window === 'undefined') return;
-  const el = document.getElementById('sector-picker');
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } else {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  window.dispatchEvent(new Event('bika-report-focus'));
-}
-
 export function PublicMobileNav() {
   const pathname = usePathname() ?? '';
   const router = useRouter();
@@ -51,13 +40,10 @@ export function PublicMobileNav() {
   const trackActive = pathname.startsWith('/track') || pathname.startsWith('/r/');
   const hotlinesActive = pathname.startsWith('/hotlines');
 
+  /** Always open the Action step (type). Sector can be changed there. */
   const onReportClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    if (pathname.startsWith('/report')) {
-      focusSectorPicker();
-      return;
-    }
-    router.push('/report');
+    router.push('/report?step=type');
   };
 
   return (
@@ -106,7 +92,7 @@ export function PublicMobileNav() {
 
           <div className="relative flex flex-col items-center justify-end pb-1.5 pointer-events-auto">
             <a
-              href="/report"
+              href="/report?step=type"
               onClick={onReportClick}
               aria-current={reportActive ? 'page' : undefined}
               aria-label="File a report"

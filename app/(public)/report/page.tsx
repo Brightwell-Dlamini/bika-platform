@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useMemo, useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { zCitizenReportSubmission } from '@/app/lib/schemas';
@@ -28,9 +28,12 @@ interface DraftShape {
   attachments: Attachment[];
 }
 
-export default function ReportPage() {
+function ReportPageInner() {
   const router = useRouter();
-  const [step, setStep] = useState<ReportStep>('sector');
+  const searchParams = useSearchParams();
+  const entryStep = searchParams.get('step');
+
+  const [step, setStep] = useState<ReportStep>(entryStep === 'type' ? 'type' : 'sector');
   const [mode, setMode] = useState<Mode>('Road Transport');
   const [reportType, setReportType] = useState<ReportType>('incident');
   const [values, setValues] = useState<Partial<DetailsValues>>({});
@@ -46,9 +49,24 @@ export default function ReportPage() {
     enabled: step !== 'success',
   });
 
+  // Honour Report FAB: /report?step=type always lands on the Action step.
+  // Clean the query so refresh does not keep forcing type over a later step.
+  useEffect(() => {
+    if (entryStep !== 'type') return;
+    setStep('type');
+    router.replace('/report', { scroll: false });
+  }, [entryStep, router]);
+
   const [restored, setRestored] = useState(false);
   useEffect(() => {
     if (restored || !draft.isRestored || !draft.data) return;
+    // Intentional entry via Report FAB (?step=type) — do not jump back into a mid-flow draft step
+    if (entryStep === 'type') {
+      setRestored(true);
+      const d = draft.data;
+      if (d.mode) setMode(d.mode);
+      return;
+    }
     setRestored(true);
     const d = draft.data;
     if (d.step && d.step !== 'sector') {
@@ -59,7 +77,7 @@ export default function ReportPage() {
       setAttachments(d.attachments ?? []);
       toast.info('Resumed from your saved draft.', { duration: 4000 });
     }
-  }, [draft, restored]);
+  }, [draft, restored, entryStep]);
 
   // Keep the active step in view after advances (mobile-friendly)
   useEffect(() => {
@@ -192,5 +210,19 @@ export default function ReportPage() {
         <SuccessStep referenceId={createdReference} onTrack={handleTrackCurrent} />
       )}
     </div>
+  );
+}
+
+export default function ReportPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 text-center text-slate-400 text-sm">
+          Loading report form…
+        </div>
+      }
+    >
+      <ReportPageInner />
+    </Suspense>
   );
 }
