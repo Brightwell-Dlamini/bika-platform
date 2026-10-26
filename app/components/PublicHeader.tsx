@@ -70,7 +70,7 @@ export function PublicHeader() {
       </a>
 
       <header
-        className={`sticky top-0 z-40 border-b transition-[background,box-shadow,border-color] duration-200 ${
+        className={`public-header sticky top-0 z-40 border-b transition-[background,box-shadow,border-color] duration-200 ${
           scrolled
             ? 'bg-slate-950/95 backdrop-blur-xl border-slate-800 shadow-lg shadow-black/25'
             : 'bg-slate-950/85 backdrop-blur-xl border-slate-800/70'
@@ -141,7 +141,7 @@ export function PublicHeader() {
                 BIKA
               </div>
               {!scrolled && (
-                <div className="text-[9px] text-slate-500 font-mono tracking-wider mt-0.5 logo-tagline">
+                <div className="text-[9px] text-slate-400 font-mono tracking-wider mt-0.5 logo-tagline">
                   REPORT · TRACK · RESPOND
                 </div>
               )}
@@ -236,7 +236,7 @@ function NavPill({
       className={`relative inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 ${
         active
           ? 'bg-yellow-500 text-slate-950 shadow-sm'
-          : 'text-slate-400 hover:text-yellow-500 hover:bg-slate-800/80 hover:scale-[1.02]'
+          : 'nav-pill-inactive text-slate-400 hover:text-slate-900 hover:bg-slate-200/80 hover:scale-[1.02]'
       }`}
     >
       <Icon className="w-3.5 h-3.5" />

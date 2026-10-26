@@ -175,7 +175,7 @@ export default function PublicHotlinesPage() {
         </p>
       </header>
 
-      {/* Life-threatening banner */}
+      {/* Life-threatening banner — pure black text on light red surface in light mode */}
       <a
         href="tel:999"
         className="flex items-center gap-4 rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/80 to-red-900/40 px-4 py-4 sm:px-5 shadow-lg shadow-red-950/30 hover:border-red-400/60 transition"
@@ -183,7 +183,7 @@ export default function PublicHotlinesPage() {
         <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-red-900/50">
           <Phone className="w-6 h-6" />
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 text-pure-black">
           <div className="text-[10px] font-black uppercase tracking-[0.14em] text-black">
             Life-threatening emergency
           </div>

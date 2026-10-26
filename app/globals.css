@@ -101,12 +101,19 @@
   background-image: linear-gradient(to top, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.25), transparent) !important;
 }
 
+/* Life-threatening / emergency red gradients → light red surface */
+.light-mode .bg-gradient-to-r.from-red-950\/80,
+.light-mode .bg-gradient-to-r.from-red-950,
+.light-mode .from-red-950\/80,
+.light-mode .from-red-950,
+.light-mode .to-red-900\/40,
+.light-mode .to-red-900,
 .light-mode .bg-gradient-to-br.from-red-950,
 .light-mode .from-red-950.via-slate-900 {
-  background-image: linear-gradient(to bottom right, #fef2f2, #ffffff, #ffffff) !important;
+  background-image: linear-gradient(to right, #fef2f2, #fee2e2, #fecaca) !important;
   background-color: #fef2f2 !important;
   color: #0f172a !important;
-  border-color: #fecaca !important;
+  border-color: #fca5a5 !important;
 }
 
 /* Body copy on light surfaces */
@@ -136,12 +143,36 @@
   color: #ffffff !important;
 }
 
-/* Logo wordmark: high contrast ink on light chrome */
-.light-mode .logo-wordmark {
-  color: #0f172a !important;
+/* -------------------------------------------------------------------------- */
+/* Public header stays dark in light mode so logo + nav chrome keep contrast   */
+/* -------------------------------------------------------------------------- */
+.light-mode header.public-header,
+.light-mode header.public-header.bg-slate-950\/95,
+.light-mode header.public-header.bg-slate-950\/85,
+.light-mode header.public-header .bg-slate-950\/95,
+.light-mode header.public-header .bg-slate-950\/85 {
+  background-color: rgba(2, 6, 23, 0.96) !important;
+  color: #f8fafc !important;
+  border-color: #1e293b !important;
 }
-.light-mode .logo-tagline {
-  color: #475569 !important;
+
+.light-mode header.public-header .logo-wordmark,
+.light-mode header.public-header .logo-wordmark.text-white {
+  color: #ffffff !important;
+}
+
+.light-mode header.public-header .logo-tagline {
+  color: #94a3b8 !important;
+}
+
+/* Nav pills: high-contrast inactive + hover that never collapses into bg */
+.light-mode .nav-pill-inactive {
+  color: #94a3b8 !important;
+}
+
+.light-mode .nav-pill-inactive:hover {
+  color: #0f172a !important;
+  background-color: #e2e8f0 !important;
 }
 
 .light-mode .text-slate-300 {
@@ -182,6 +213,12 @@
 .light-mode .text-red-300,
 .light-mode .text-red-400 {
   color: #b91c1c !important;
+}
+
+/* Pure black utility for emergency banner text */
+.light-mode .text-pure-black,
+.light-mode .text-pure-black * {
+  color: #000000 !important;
 }
 
 .light-mode body {
