@@ -1,6 +1,14 @@
 User-agent: *
 Allow: /
-Disallow: /login
-Disallow: /api/
+Allow: /report
+Allow: /track
+Allow: /hotlines
+Allow: /r/
 
-Sitemap:
+Disallow: /login
+Disallow: /admin
+Disallow: /officer
+Disallow: /command
+Disallow: /analytics
+Disallow: /profile
+Disallow: /api/

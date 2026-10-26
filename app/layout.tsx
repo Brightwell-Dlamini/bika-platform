@@ -36,7 +36,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#eab308',
+  themeColor: '#0f172a',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
@@ -48,21 +48,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className="dark" data-theme="dark" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 try {
-                  var saved = localStorage.getItem('bika_theme');
-                  if (saved === 'light') {
-                    document.documentElement.classList.add('light-mode');
-                    document.documentElement.setAttribute('data-theme', 'light');
-                  } else {
-                    document.documentElement.classList.remove('light-mode');
-                    document.documentElement.setAttribute('data-theme', 'dark');
-                  }
+                  document.documentElement.classList.remove('light-mode');
+                  document.documentElement.classList.add('dark');
+                  document.documentElement.setAttribute('data-theme', 'dark');
+                  localStorage.setItem('bika_theme', 'dark');
                 } catch (e) {}
               })();
             `,

@@ -5,7 +5,7 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 import { generateReferenceId } from '@/app/lib/utils/referenceId';
 import { runIncidentAutomation } from '@/app/lib/automation/incident';
 import { logger, newRequestId } from '@/app/lib/logger';
-import { rateLimit, clientIpFromHeaders } from '@/app/lib/rateLimit';
+import { rateLimitAsync, clientIpFromHeaders } from '@/app/lib/rateLimit';
 import type { ApiResponse } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
@@ -35,14 +35,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(body, { status: 503 });
   }
 
-  const secret = req.headers.get('x-ussd-secret') || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  const secret =
+    req.headers.get('x-ussd-secret') ||
+    req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (secret !== env.USSD_WEBHOOK_SECRET) {
     logger.warn('ussd_auth_failed', { requestId });
-    const body: ApiResponse<never> = { ok: false, code: 'UNAUTHORIZED', error: 'Invalid USSD secret.' };
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'UNAUTHORIZED',
+      error: 'Invalid USSD secret.',
+    };
     return NextResponse.json(body, { status: 401 });
   }
 
-  const rl = rateLimit(`ussd:${clientIpFromHeaders(req.headers)}`, 30);
+  const rl = await rateLimitAsync(`ussd:${clientIpFromHeaders(req.headers)}`, 30);
   if (!rl.allowed) {
     return NextResponse.json(
       { ok: false, code: 'RATE_LIMITED', error: 'Too many USSD requests.' } satisfies ApiResponse<never>,
