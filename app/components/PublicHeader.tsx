@@ -9,16 +9,12 @@ import {
   Search,
   Wifi,
   WifiOff,
-  Moon,
-  Sun,
   Phone,
   AlertTriangle,
 } from 'lucide-react';
-import { useTheme } from '@/app/providers/ThemeProvider';
 import { getMyReports } from '@/app/lib/myReports';
 
 export function PublicHeader() {
-  const { theme, toggleTheme } = useTheme();
   const pathname = usePathname() ?? '';
   const [online, setOnline] = useState(true);
   const [scrolled, setScrolled] = useState(false);
@@ -186,16 +182,6 @@ export function PublicHeader() {
               <Phone className="w-4 h-4" />
             </Link>
 
-            <button
-              type="button"
-              onClick={toggleTheme}
-              title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-              aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-yellow-400 border border-slate-800 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500"
-            >
-              {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
-            </button>
-
             <Link
               href="/login"
               aria-current={loginActive ? 'page' : undefined}
@@ -236,7 +222,7 @@ function NavPill({
       className={`relative inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 ${
         active
           ? 'bg-yellow-500 text-slate-950 shadow-sm'
-          : 'nav-pill-inactive text-slate-400 hover:text-slate-900 hover:bg-slate-200/80 hover:scale-[1.02]'
+          : 'text-slate-400 hover:text-white hover:bg-slate-800/80 hover:scale-[1.02]'
       }`}
     >
       <Icon className="w-3.5 h-3.5" />

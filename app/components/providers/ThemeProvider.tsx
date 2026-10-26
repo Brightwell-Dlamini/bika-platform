@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -15,67 +15,65 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 const THEME_STORAGE_KEY = 'bika_theme';
 
+/**
+ * Theme is locked to dark mode until light-mode surfaces are fully polished.
+ * Any attempt to set or restore light mode is ignored.
+ */
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setThemeState] = useState<ThemeMode>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      if (saved === 'light' || saved === 'dark') return saved;
-    } catch (e) {}
-    return 'dark';
-  });
-
-  const applyThemeToDOM = (t: ThemeMode) => {
+  const applyDarkMode = () => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
     const body = document.body;
 
-    if (t === 'light') {
-      root.classList.add('light-mode');
-      root.classList.remove('dark');
-      root.setAttribute('data-theme', 'light');
-      body.classList.add('light-mode');
-      body.setAttribute('data-theme', 'light');
-    } else {
-      root.classList.remove('light-mode');
-      root.classList.add('dark');
-      root.setAttribute('data-theme', 'dark');
-      body.classList.remove('light-mode');
-      body.setAttribute('data-theme', 'dark');
-    }
+    root.classList.remove('light-mode');
+    root.classList.add('dark');
+    root.setAttribute('data-theme', 'dark');
+    body.classList.remove('light-mode');
+    body.setAttribute('data-theme', 'dark');
   };
 
   useEffect(() => {
-    applyThemeToDOM(theme);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch (e) {
-      console.warn('Unable to persist theme to localStorage', e);
-    }
-  }, [theme]);
+    applyDarkMode();
 
-  // Sync across multiple browser tabs
-  useEffect(() => {
+    // Clear any previously saved light preference so it cannot reappear later.
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+    } catch {
+      // ignore
+    }
+
+    // Guard against other tabs or code trying to flip the theme.
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === THEME_STORAGE_KEY && (e.newValue === 'light' || e.newValue === 'dark')) {
-        setThemeState(e.newValue);
-        applyThemeToDOM(e.newValue);
+      if (e.key === THEME_STORAGE_KEY && e.newValue !== 'dark') {
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, 'dark');
+        } catch {
+          // ignore
+        }
+        applyDarkMode();
       }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const setTheme = (newTheme: ThemeMode) => {
-    setThemeState(newTheme);
+  // No-ops — theme is locked.
+  const setTheme = (_theme: ThemeMode) => {
+    // intentionally ignored
   };
-
   const toggleTheme = () => {
-    setThemeState(prev => (prev === 'light' ? 'dark' : 'light'));
+    // intentionally ignored
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, isLightMode: theme === 'light', setTheme, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        theme: 'dark',
+        isLightMode: false,
+        setTheme,
+        toggleTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -84,16 +82,11 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
   if (!context) {
-    const isLight = typeof window !== 'undefined' && localStorage.getItem(THEME_STORAGE_KEY) === 'light';
     return {
-      theme: isLight ? 'light' : 'dark',
-      isLightMode: isLight,
-      setTheme: (t: ThemeMode) => {
-        try {
-          localStorage.setItem(THEME_STORAGE_KEY, t);
-        } catch (e) {}
-      },
-      toggleTheme: () => {}
+      theme: 'dark',
+      isLightMode: false,
+      setTheme: () => {},
+      toggleTheme: () => {},
     };
   }
   return context;
