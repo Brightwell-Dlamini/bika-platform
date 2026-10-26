@@ -1,7 +1,7 @@
-/* BIKA Platform – Service Worker v6.1.2
- * Network-first for documents and Next.js bundles so deploys are not stuck on a dead cached shell.
+/* BIKA Platform – Service Worker v6.2.0
+ * Network-first for documents and Next.js bundles; Web Push handlers for OPS.
  */
-const CACHE_NAME = 'bika-v612-icons-png';
+const CACHE_NAME = 'bika-v62-notifications';
 const PRECACHE_URLS = [
   '/manifest.json',
   '/icons/icon-192.png',
@@ -103,4 +103,43 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+/* ---- Web Push ---- */
+self.addEventListener('push', (event) => {
+  let data = { title: 'BIKA', body: 'New update', href: '/officer' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch (_) {
+    try {
+      if (event.data) data.body = event.data.text();
+    } catch (__) {}
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'BIKA', {
+      body: data.body || '',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { href: data.href || '/officer' },
+      tag: data.incidentId || 'bika-general',
+      renotify: true,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const href = (event.notification.data && event.notification.data.href) || '/officer';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(href);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(href);
+    })
+  );
 });

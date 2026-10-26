@@ -1,7 +1,7 @@
 import 'server-only';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
 import { logger } from '@/app/lib/logger';
-import { dispatch, defaultChannelsForSeverity } from '@/app/lib/notifications/dispatcher';
+import { dispatch, defaultStaffChannels } from '@/app/lib/notifications/dispatcher';
 import {
   officerAssignment,
   officerCritical,
@@ -158,14 +158,16 @@ export async function runIncidentAutomation(
 
     if (enriched) {
       const mapped = mapIncident(enriched as Record<string, unknown>);
+      const channels = defaultStaffChannels();
 
       if (result.assignedOfficerId && result.assignedOfficerName) {
         const msg = officerAssignment(mapped, result.assignedOfficerName);
-        const channels = defaultChannelsForSeverity(mapped.severity);
         const dispatched = await dispatch({
           channels,
           incidentId,
           eventType: 'officer.assigned',
+          recipientUserIds: [result.assignedOfficerId],
+          href: `/officer/case/${incidentId}`,
           payload: {
             subject: msg.subject,
             body: msg.body,
@@ -179,19 +181,32 @@ export async function runIncidentAutomation(
 
       if (isCreate && mapped.severity === 'CRITICAL') {
         const msg = officerCritical(mapped);
-        const dispatched = await dispatch({
-          channels: ['webhook', 'email', 'sms'],
-          incidentId,
-          eventType: 'incident.critical',
-          payload: {
-            subject: msg.subject,
-            body: msg.body,
-            data: { incidentId, severity: mapped.severity },
-          },
-        });
-        result.notificationsSent.push(
-          ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
+        const recipients = await loadOnDutyOfficerIds(
+          supabase,
+          result.agencyCode ?? targetAgency,
+          String(incident.region ?? '')
         );
+        // Always include assignee if any
+        if (result.assignedOfficerId && !recipients.includes(result.assignedOfficerId)) {
+          recipients.push(result.assignedOfficerId);
+        }
+        if (recipients.length > 0) {
+          const dispatched = await dispatch({
+            channels,
+            incidentId,
+            eventType: 'incident.critical',
+            recipientUserIds: recipients,
+            href: `/officer/case/${incidentId}`,
+            payload: {
+              subject: msg.subject,
+              body: msg.body,
+              data: { incidentId, severity: mapped.severity },
+            },
+          });
+          result.notificationsSent.push(
+            ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
+          );
+        }
       }
     }
 
@@ -273,10 +288,6 @@ interface PickedOfficer {
   openCases: number;
 }
 
-/**
- * Prefer on-duty same region, then on-duty Nationwide, then any active.
- * Within a candidate pool, choose the officer with the fewest open cases.
- */
 async function pickOfficer(
   supabase: ReturnType<typeof createServiceSupabase>,
   agency: AgencyCode,
@@ -355,4 +366,14 @@ async function loadCandidates(
   }
 
   return [];
+}
+
+async function loadOnDutyOfficerIds(
+  supabase: ReturnType<typeof createServiceSupabase>,
+  agency: AgencyCode | null,
+  region: string
+): Promise<string[]> {
+  if (!agency) return [];
+  const candidates = await loadCandidates(supabase, agency, region);
+  return candidates.map((c) => c.id);
 }

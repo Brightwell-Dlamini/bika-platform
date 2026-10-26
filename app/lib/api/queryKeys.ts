@@ -84,4 +84,9 @@ export const qk = {
     list: (filters?: { userId?: string; targetId?: string; limit?: number }) =>
       [...qk.audit.all, filters ?? {}] as const,
   },
+
+  notifications: {
+    all: ['notifications'] as const,
+    list: () => [...qk.notifications.all, 'list'] as const,
+  },
 } as const;
