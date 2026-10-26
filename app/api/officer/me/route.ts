@@ -68,6 +68,15 @@ export async function GET() {
     return NextResponse.json(body, { status: 404 });
   }
 
+  if (!profile.active) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'FORBIDDEN',
+      error: 'This account has been deactivated. Contact your Super Admin.',
+    };
+    return NextResponse.json(body, { status: 403 });
+  }
+
   const nationwide =
     caller.region === 'Nationwide' || isSuperAdmin(caller.role) || isAdmin(caller.role);
   const isField = isOfficer(caller.role) && !isSuperAdmin(caller.role) && !isAdmin(caller.role);
@@ -157,9 +166,16 @@ const patchSchema = z
       .nullable()
       .or(z.literal('').transform(() => null)),
   })
-  .refine((d) => d.onDuty !== undefined || d.name !== undefined || d.phone !== undefined || d.avatarUrl !== undefined, {
-    message: 'At least one field is required.',
-  });
+  .refine(
+    (d) =>
+      d.onDuty !== undefined ||
+      d.name !== undefined ||
+      d.phone !== undefined ||
+      d.avatarUrl !== undefined,
+    {
+      message: 'At least one field is required.',
+    }
+  );
 
 /** PATCH /api/officer/me — duty toggle and self-service profile fields. */
 export async function PATCH(req: NextRequest) {

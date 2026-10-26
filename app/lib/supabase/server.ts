@@ -59,7 +59,7 @@ export function createServiceSupabase(): SupabaseClient {
   if (!hasServiceRole()) {
     throw new Error(
       '[BIKA] SUPABASE_SERVICE_ROLE_KEY is not set. ' +
-      'Service-role operations are unavailable.'
+        'Service-role operations are unavailable.'
     );
   }
   return createClient(env.NEXT_PUBLIC_SUPABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -85,12 +85,14 @@ export interface CallerProfile {
 
 /**
  * Resolves the current authenticated user to their profile row.
- * Returns null if unauthenticated or no matching profile exists.
+ * Returns null if unauthenticated, inactive, or no matching profile exists.
  * Uses the service client internally so it works even with tight RLS.
  */
 export async function getCallerProfile(): Promise<CallerProfile | null> {
   const supabase = await createServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user?.email) return null;
 
   const admin = createServiceSupabase();
@@ -102,12 +104,12 @@ export async function getCallerProfile(): Promise<CallerProfile | null> {
 
   if (error || !data) return null;
 
+  // Deactivated officials must not access ops APIs or workspaces
+  if (!data.active) return null;
+
   // Backfill auth_user_id if it drifted
   if (!data.auth_user_id) {
-    await admin
-      .from('profiles')
-      .update({ auth_user_id: user.id })
-      .eq('id', data.id);
+    await admin.from('profiles').update({ auth_user_id: user.id }).eq('id', data.id);
   }
 
   return {

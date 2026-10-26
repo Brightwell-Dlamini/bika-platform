@@ -5,11 +5,14 @@ import { dispatch } from '@/app/lib/notifications/dispatcher';
 import { citizenReceipt } from '@/app/lib/notifications/templates';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
+import { rateLimitAsync, clientIpFromHeaders } from '@/app/lib/rateLimit';
 import type { ApiResponse, Incident } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
 
-// Rate limit: one receipt per incident per 5 minutes
+/** Only allow receipt resend within 48h of submission (anti-harassment). */
+const RECEIPT_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+/** Per-incident cooldown */
 const RECEIPT_COOLDOWN_MS = 5 * 60_000;
 const recentReceipts = new Map<string, number>();
 
@@ -23,6 +26,21 @@ const bodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   const requestId = newRequestId();
+  const ip = clientIpFromHeaders(req.headers);
+
+  // Hard IP throttle — resend is not a high-volume path
+  const rl = await rateLimitAsync(`receipt:${ip}`, 6, 60 * 60 * 1000);
+  if (!rl.allowed) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'RATE_LIMITED',
+      error: 'Too many receipt requests. Please try again later.',
+    };
+    return NextResponse.json(body, {
+      status: 429,
+      headers: { 'Retry-After': String(rl.retryAfter ?? 3600) },
+    });
+  }
 
   let json: unknown;
   try {
@@ -48,7 +66,6 @@ export async function POST(req: NextRequest) {
 
   const id = normalizeReferenceId(parsed.data.incidentId);
 
-  // Cooldown check
   const now = Date.now();
   const lastSent = recentReceipts.get(id);
   if (lastSent && now - lastSent < RECEIPT_COOLDOWN_MS) {
@@ -74,6 +91,16 @@ export async function POST(req: NextRequest) {
       error: 'Report not found.',
     };
     return NextResponse.json(body, { status: 404 });
+  }
+
+  const createdAt = new Date(String(row.created_at)).getTime();
+  if (!Number.isFinite(createdAt) || now - createdAt > RECEIPT_MAX_AGE_MS) {
+    const body: ApiResponse<never> = {
+      ok: false,
+      code: 'GONE',
+      error: 'Receipt resend is only available within 48 hours of submission.',
+    };
+    return NextResponse.json(body, { status: 410 });
   }
 
   const incident = mapIncident(row);
