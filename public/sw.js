@@ -1,12 +1,13 @@
-/* BIKA Platform – Service Worker v6.1.1
+/* BIKA Platform – Service Worker v6.1.2
  * Network-first for documents and Next.js bundles so deploys are not stuck on a dead cached shell.
  */
-const CACHE_NAME = 'bika-v611-icons';
+const CACHE_NAME = 'bika-v612-icons-png';
 const PRECACHE_URLS = [
   '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
-  '/icons/icon-maskable.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {

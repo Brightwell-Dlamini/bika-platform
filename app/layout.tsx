@@ -12,11 +12,11 @@ export const metadata: Metadata = {
     'Kingdom of Eswatini official integrated real-time incident, transport and trade reporting platform. See something, say something.',
   icons: {
     icon: [
-      { url: '/icons/icon-192.svg', type: 'image/svg+xml', sizes: '192x192' },
-      { url: '/icons/icon-512.svg', type: 'image/svg+xml', sizes: '512x512' },
+      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icons/icon-512.png', type: 'image/png', sizes: '512x512' },
     ],
-    shortcut: '/icons/icon-192.svg',
-    apple: [{ url: '/icons/icon-512.svg', type: 'image/svg+xml', sizes: '512x512' }],
+    shortcut: '/icons/icon-192.png',
+    apple: [{ url: '/icons/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -63,8 +63,8 @@ export default function RootLayout({
             `,
           }}
         />
-        <link rel="icon" href="/icons/icon-192.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/icons/icon-512.svg" />
+        <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
       </head>
       <body className={inter.className}>
         <a
