@@ -259,7 +259,8 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
                   </span>
                   {item.badge != null && item.badge > 0 && (
                     <span
-                      className={`absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${\n                        item.urgent ? 'bg-rose-500 text-white' : 'bg-yellow-500 text-slate-950'
+                      className={`absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${
+                        item.urgent ? 'bg-rose-500 text-white' : 'bg-yellow-500 text-slate-950'
                       }`}
                     >
                       {item.badge > 9 ? '9+' : item.badge}
