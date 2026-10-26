@@ -1,5 +1,4 @@
 import 'server-only';
-import { createRequire } from 'module';
 import { env } from '@/app/lib/env';
 import { logger } from '@/app/lib/logger';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
@@ -66,25 +65,22 @@ export async function sendInApp(payload: NotificationPayload): Promise<ChannelRe
 // Web Push — requires VAPID keys + web-push package
 // -----------------------------------------------------------------------------
 
-function loadWebPush(): {
+type WebPushModule = {
   setVapidDetails: (subject: string, publicKey: string, privateKey: string) => void;
   sendNotification: (
     subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
     payload: string,
     options?: { TTL?: number }
   ) => Promise<unknown>;
-} | null {
+};
+
+function loadWebPush(): WebPushModule | null {
   try {
-    const require = createRequire(import.meta.url);
+    // CJS require — package is listed in serverExternalPackages
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('web-push') as ReturnType<typeof loadWebPush>;
+    return require('web-push') as WebPushModule;
   } catch {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require('web-push') as ReturnType<typeof loadWebPush>;
-    } catch {
-      return null;
-    }
+    return null;
   }
 }
 
@@ -132,8 +128,8 @@ export async function sendPush(payload: NotificationPayload): Promise<ChannelRes
       try {
         await webpush.sendNotification(
           {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.p256dh, auth: sub.auth },
+            endpoint: sub.endpoint as string,
+            keys: { p256dh: sub.p256dh as string, auth: sub.auth as string },
           },
           body,
           { TTL: 60 * 60 }
