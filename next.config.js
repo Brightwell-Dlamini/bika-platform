@@ -10,6 +10,8 @@ const nextConfig = {
     ],
   },
   transpilePackages: ['lucide-react'],
+  // Keep native / CJS packages out of the bundler (web-push uses Node crypto/http)
+  serverExternalPackages: ['web-push'],
   typescript: {
     // Temporary: legacy dashboard components still compare Title-Case statuses
     // against the v2 lowercase IncidentStatus union. Re-enable strict checks

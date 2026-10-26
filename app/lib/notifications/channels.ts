@@ -1,4 +1,5 @@
 import 'server-only';
+import { createRequire } from 'module';
 import { env } from '@/app/lib/env';
 import { logger } from '@/app/lib/logger';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
@@ -15,7 +16,7 @@ export interface NotificationPayload {
   body: string;
   toPhone?: string;
   toEmail?: string;
-  /** Profile IDs that should receive in_app / push. */
+  /** Profile IDs (TEXT) that should receive in_app / push. */
   recipientUserIds?: string[];
   href?: string;
   incidentId?: string;
@@ -65,6 +66,28 @@ export async function sendInApp(payload: NotificationPayload): Promise<ChannelRe
 // Web Push — requires VAPID keys + web-push package
 // -----------------------------------------------------------------------------
 
+function loadWebPush(): {
+  setVapidDetails: (subject: string, publicKey: string, privateKey: string) => void;
+  sendNotification: (
+    subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
+    payload: string,
+    options?: { TTL?: number }
+  ) => Promise<unknown>;
+} | null {
+  try {
+    const require = createRequire(import.meta.url);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('web-push') as ReturnType<typeof loadWebPush>;
+  } catch {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      return require('web-push') as ReturnType<typeof loadWebPush>;
+    } catch {
+      return null;
+    }
+  }
+}
+
 export async function sendPush(payload: NotificationPayload): Promise<ChannelResult> {
   const ids = payload.recipientUserIds?.filter(Boolean) ?? [];
   if (ids.length === 0) {
@@ -79,14 +102,12 @@ export async function sendPush(payload: NotificationPayload): Promise<ChannelRes
     return { channel: 'push', status: 'skipped_not_configured' };
   }
 
-  try {
-    // Optional dependency — degrade if not installed
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const webpush = await import('web-push').catch(() => null);
-    if (!webpush) {
-      return { channel: 'push', status: 'skipped_no_module' };
-    }
+  const webpush = loadWebPush();
+  if (!webpush) {
+    return { channel: 'push', status: 'skipped_no_module' };
+  }
 
+  try {
     webpush.setVapidDetails(subject, publicKey, privateKey);
 
     const supabase = createServiceSupabase();
@@ -123,11 +144,13 @@ export async function sendPush(payload: NotificationPayload): Promise<ChannelRes
           err && typeof err === 'object' && 'statusCode' in err
             ? Number((err as { statusCode?: number }).statusCode)
             : 0;
-        // Gone / unsubscribed — drop row
         if (statusCode === 404 || statusCode === 410) {
           await supabase.from('push_subscriptions').delete().eq('id', sub.id);
         } else {
-          logger.warn('notify_push_one_failed', { endpoint: sub.endpoint.slice(0, 48), statusCode });
+          logger.warn('notify_push_one_failed', {
+            endpoint: String(sub.endpoint).slice(0, 48),
+            statusCode,
+          });
         }
       }
     }

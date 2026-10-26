@@ -3,19 +3,10 @@ import { z } from 'zod';
 import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/server';
 import { isPublic } from '@/app/lib/rbac';
 import type { ApiResponse } from '@/app/types';
+import type { NotificationRow } from '@/app/lib/notifications/types';
 
 export const dynamic = 'force-dynamic';
-
-export interface NotificationRow {
-  id: string;
-  title: string;
-  body: string;
-  href: string | null;
-  incidentId: string | null;
-  eventType: string;
-  readAt: string | null;
-  createdAt: string;
-}
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   const caller = await getCallerProfile();
@@ -76,7 +67,7 @@ export async function GET(req: NextRequest) {
 }
 
 const patchSchema = z.object({
-  ids: z.array(z.string().uuid()).max(100).optional(),
+  ids: z.array(z.string().min(1).max(80)).max(100).optional(),
   all: z.boolean().optional(),
 });
 

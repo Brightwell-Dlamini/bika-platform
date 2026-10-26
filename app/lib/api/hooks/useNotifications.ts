@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '@/app/lib/api/fetcher';
 import { qk } from '@/app/lib/api/queryKeys';
-import type { NotificationRow } from '@/app/api/notifications/route';
+import type { NotificationRow } from '@/app/lib/notifications/types';
 
 export function useNotifications(enabled = true) {
   return useQuery({

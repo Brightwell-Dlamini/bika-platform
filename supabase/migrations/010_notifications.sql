@@ -1,11 +1,17 @@
 -- =============================================================================
 -- BIKA 010 — In-app notifications + PWA push subscriptions
 -- Safe to re-run. Apply in Supabase SQL Editor after 009.
+--
+-- IMPORTANT: public.profiles.id is TEXT (not UUID). user_id columns must match.
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS public.notifications (
+-- Clean up any partial / failed previous attempt
+DROP TABLE IF EXISTS public.push_subscriptions CASCADE;
+DROP TABLE IF EXISTS public.notifications CASCADE;
+
+CREATE TABLE public.notifications (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  user_id       TEXT NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   title         TEXT NOT NULL,
   body          TEXT NOT NULL,
   href          TEXT,
@@ -15,17 +21,17 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_notifications_user_created
+CREATE INDEX idx_notifications_user_created
   ON public.notifications (user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_notifications_user_unread
+CREATE INDEX idx_notifications_user_unread
   ON public.notifications (user_id)
   WHERE read_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_notifications_incident
+CREATE INDEX idx_notifications_incident
   ON public.notifications (incident_id);
 
-CREATE TABLE IF NOT EXISTS public.push_subscriptions (
+CREATE TABLE public.push_subscriptions (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id       UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  user_id       TEXT NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
   endpoint      TEXT NOT NULL,
   p256dh        TEXT NOT NULL,
   auth          TEXT NOT NULL,
@@ -35,7 +41,7 @@ CREATE TABLE IF NOT EXISTS public.push_subscriptions (
   UNIQUE (user_id, endpoint)
 );
 
-CREATE INDEX IF NOT EXISTS idx_push_subs_user
+CREATE INDEX idx_push_subs_user
   ON public.push_subscriptions (user_id);
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
