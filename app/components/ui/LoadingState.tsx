@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
-import { Loader2 } from 'lucide-react';
 import {
+  AdminShellSkeleton,
+  BrandPulse,
   DashboardSkeleton,
   FeedSkeleton,
   MapSkeleton,
   QueueSkeleton,
+  ReassignSkeleton,
   Skeleton,
 } from '@/app/components/ui/Skeleton';
 
@@ -17,43 +19,42 @@ export type LoadingVariant =
   | 'dashboard'
   | 'map'
   | 'feed'
-  | 'inline';
+  | 'admin'
+  | 'reassign'
+  | 'inline'
+  | 'brand';
 
 interface LoadingStateProps {
+  /** Ignored for page variants — kept for API compat */
   message?: string;
-  /** Center vertically with generous padding (spinner). */
   full?: boolean;
-  /** @deprecated use variant="skeleton" */
+  /** @deprecated use variant */
   skeleton?: boolean;
   rows?: number;
   variant?: LoadingVariant;
 }
 
 /**
- * Unified loading surface.
- * Prefer layout skeletons over spinners for page-level waits.
+ * Prefer layout skeletons. Never show weak "Loading workspace…" copy.
  */
 export function LoadingState({
-  message = 'Loading…',
   full,
   skeleton,
   rows = 4,
   variant,
 }: LoadingStateProps) {
-  const mode: LoadingVariant = variant ?? (skeleton ? 'skeleton' : 'spinner');
+  const mode: LoadingVariant = variant ?? (skeleton ? 'skeleton' : 'brand');
 
   if (mode === 'queue') return <QueueSkeleton rows={rows} />;
   if (mode === 'dashboard') return <DashboardSkeleton />;
   if (mode === 'map') return <MapSkeleton />;
   if (mode === 'feed') return <FeedSkeleton rows={rows} />;
+  if (mode === 'admin') return <AdminShellSkeleton />;
+  if (mode === 'reassign') return <ReassignSkeleton />;
 
   if (mode === 'skeleton') {
     return (
-      <div
-        className={`space-y-3 ${full ? 'py-12' : 'py-4'}`}
-        aria-busy="true"
-        aria-label={message}
-      >
+      <div className={`space-y-3 ${full ? 'py-12' : 'py-4'}`} aria-busy="true">
         {Array.from({ length: rows }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full" rounded="2xl" />
         ))}
@@ -63,27 +64,21 @@ export function LoadingState({
 
   if (mode === 'inline') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs" role="status">
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        {message}
+      <span className="inline-flex items-center" role="status" aria-label="Working">
+        <span className="w-3.5 h-3.5 rounded-full border-2 border-slate-600 border-t-yellow-400 animate-spin" />
       </span>
     );
   }
 
+  // brand / default — ambient, no caption
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-3 text-slate-500 ${
-        full ? 'py-24' : 'py-12'
-      }`}
+      className={`flex flex-col items-center justify-center ${full ? 'py-24' : 'py-16'}`}
       role="status"
-      aria-live="polite"
       aria-busy="true"
+      aria-label="Loading"
     >
-      <div className="relative w-10 h-10">
-        <div className="absolute inset-0 rounded-full border-2 border-slate-800" />
-        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-yellow-400 animate-spin" />
-      </div>
-      <p className="text-xs font-semibold tracking-wide">{message}</p>
+      <BrandPulse />
     </div>
   );
 }

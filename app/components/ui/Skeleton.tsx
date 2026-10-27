@@ -3,10 +3,8 @@
 import React from 'react';
 
 /**
- * BIKA loading primitives (2026)
- * - Layout-matched skeletons (not spinner walls)
- * - Soft shimmer; static pulse when prefers-reduced-motion
- * - Always expose aria-busy to assistive tech
+ * BIKA loading system — structure first, zero weak copy.
+ * Page waits = skeletons. Button waits = tiny spinner only.
  */
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -42,6 +40,20 @@ export function Skeleton({
   );
 }
 
+/** Ambient brand mark — no words, just presence */
+export function BrandPulse({ className }: { className?: string }) {
+  return (
+    <div className={cx('relative flex items-center justify-center', className)} aria-hidden>
+      <div className="absolute w-16 h-16 rounded-full bg-yellow-500/10 animate-ping" />
+      <div className="absolute w-10 h-10 rounded-full bg-yellow-500/15" />
+      <div className="relative w-9 h-9 rounded-xl bg-slate-900 border border-yellow-500/30 flex items-center justify-center shadow-[0_0_24px_rgba(234,179,8,0.25)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/Bika.png" alt="" className="w-6 h-6 object-contain opacity-90" />
+      </div>
+    </div>
+  );
+}
+
 export function SkeletonText({ lines = 2, className }: { lines?: number; className?: string }) {
   return (
     <div className={cx('space-y-2', className)}>
@@ -56,11 +68,10 @@ export function SkeletonText({ lines = 2, className }: { lines?: number; classNa
   );
 }
 
-/** Officer queue row placeholder */
 export function QueueRowSkeleton() {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-slate-800/90 bg-slate-900/60 pl-4 pr-4 py-3.5">
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-700" />
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-500/40 to-slate-700" />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex gap-2">
@@ -83,7 +94,7 @@ export function QueueRowSkeleton() {
 
 export function QueueSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="space-y-5 animate-fadeIn" aria-busy="true" aria-label="Loading case queue">
+    <div className="space-y-5 animate-fadeIn" aria-busy="true" aria-label="Loading">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <Skeleton className="h-3 w-20" rounded="md" />
@@ -107,14 +118,47 @@ export function QueueSkeleton({ rows = 6 }: { rows?: number }) {
 
 export function DashboardSkeleton() {
   return (
-    <div className="space-y-7 animate-fadeIn" aria-busy="true" aria-label="Loading dashboard">
-      <Skeleton className="h-40 w-full" rounded="2xl" />
+    <div className="space-y-7 animate-fadeIn" aria-busy="true" aria-label="Loading">
+      <div className="relative overflow-hidden rounded-[1.75rem] border border-white/[0.06] bg-[#070b12] p-6 sm:p-8">
+        <div className="absolute -top-24 -right-16 w-[28rem] h-[28rem] rounded-full bg-yellow-500/[0.05] blur-3xl" />
+        <div className="relative space-y-4 max-w-md">
+          <div className="flex gap-2">
+            <Skeleton className="h-6 w-20" rounded="full" />
+            <Skeleton className="h-6 w-16" rounded="full" />
+          </div>
+          <Skeleton className="h-10 w-56" rounded="lg" />
+          <Skeleton className="h-3 w-40" rounded="md" />
+          <div className="flex gap-2 pt-2">
+            <Skeleton className="h-10 w-28" rounded="xl" />
+            <Skeleton className="h-10 w-28" rounded="xl" />
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-24" rounded="2xl" />
         ))}
       </div>
-      <Skeleton className="h-64 w-full" rounded="2xl" />
+      <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#0a0e16] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/[0.05] flex justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" rounded="md" />
+            <Skeleton className="h-3 w-40" rounded="md" />
+          </div>
+          <Skeleton className="h-3 w-16" rounded="md" />
+        </div>
+        <div className="divide-y divide-white/[0.04]">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="px-6 py-3.5 flex justify-between gap-4">
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-3 w-24" rounded="md" />
+                <Skeleton className="h-4 w-2/3 max-w-xs" rounded="md" />
+              </div>
+              <Skeleton className="h-3 w-16" rounded="md" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -127,9 +171,13 @@ export function MapSkeleton({ wall }: { wall?: boolean }) {
         wall && 'min-h-screen'
       )}
       aria-busy="true"
-      aria-label="Loading Kingdom map"
+      aria-label="Loading map"
     >
       <div className="absolute inset-0 bika-skeleton-map" />
+      {/* soft kingdom glow */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-[min(70%,280px)] aspect-[4/5] rounded-[40%] border border-yellow-500/10 bg-yellow-500/[0.03]" />
+      </div>
       <div className="absolute top-3 left-3 rounded-2xl border border-white/10 bg-black/60 p-3 w-48 space-y-2">
         <Skeleton className="h-3 w-28 bg-slate-700/80" rounded="md" />
         <Skeleton className="h-2.5 w-36 bg-slate-700/80" rounded="md" />
@@ -138,14 +186,10 @@ export function MapSkeleton({ wall }: { wall?: boolean }) {
         <Skeleton className="h-2.5 w-16 bg-slate-700/80" rounded="md" />
         <Skeleton className="h-2.5 w-full bg-slate-700/80" rounded="md" />
         <Skeleton className="h-2.5 w-full bg-slate-700/80" rounded="md" />
+        <Skeleton className="h-2.5 w-3/4 bg-slate-700/80" rounded="md" />
       </div>
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <div className="mx-auto w-12 h-12 rounded-full border-2 border-yellow-500/30 border-t-yellow-400 animate-spin" />
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-            Syncing Kingdom map
-          </p>
-        </div>
+        <BrandPulse />
       </div>
     </div>
   );
@@ -153,9 +197,12 @@ export function MapSkeleton({ wall }: { wall?: boolean }) {
 
 export function FeedSkeleton({ rows = 8 }: { rows?: number }) {
   return (
-    <div className="h-full flex flex-col" aria-busy="true" aria-label="Loading live feed">
-      <div className="p-3 border-b border-white/5 flex justify-between">
-        <Skeleton className="h-3 w-20" rounded="md" />
+    <div className="h-full flex flex-col" aria-busy="true" aria-label="Loading feed">
+      <div className="p-3 border-b border-white/5 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50" />
+          <Skeleton className="h-3 w-16" rounded="md" />
+        </div>
         <Skeleton className="h-3 w-12" rounded="md" />
       </div>
       <div className="flex-1 overflow-hidden divide-y divide-white/5">
@@ -179,7 +226,10 @@ export function OfficerShellSkeleton() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col" aria-busy="true">
       <header className="h-14 border-b border-slate-800/80 px-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <Skeleton className="w-9 h-9" rounded="lg" />
+          <div className="w-9 h-9 rounded-lg bg-slate-900 border border-yellow-500/20 flex items-center justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Bika.png" alt="" className="w-6 h-6 object-contain opacity-80" />
+          </div>
           <div className="hidden sm:block space-y-1.5">
             <Skeleton className="h-3 w-16" rounded="md" />
             <Skeleton className="h-2.5 w-24" rounded="md" />
@@ -207,11 +257,11 @@ export function CommandShellSkeleton({ kiosk }: { kiosk?: boolean }) {
           <Skeleton className="h-3 w-16 bg-slate-800" rounded="md" />
           <Skeleton className="h-3 w-16 bg-slate-800" rounded="md" />
         </div>
-        <div className="flex-1 grid grid-cols-12 min-h-0">
-          <div className="col-span-7 relative">
+        <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 min-h-0">
+          <div className="xl:col-span-7 relative min-h-[40vh]">
             <MapSkeleton />
           </div>
-          <div className="col-span-5 border-l border-white/5">
+          <div className="xl:col-span-5 border-l border-white/5">
             <FeedSkeleton />
           </div>
         </div>
@@ -224,20 +274,99 @@ export function CommandShellSkeleton({ kiosk }: { kiosk?: boolean }) {
       <header className="h-12 border-b border-slate-800 px-4 flex items-center gap-3">
         <Skeleton className="h-3 w-28" rounded="md" />
         <Skeleton className="h-3 w-24" rounded="md" />
+        <div className="ml-auto flex gap-2">
+          <Skeleton className="h-7 w-7" rounded="full" />
+        </div>
       </header>
-      <div className="flex-1 grid grid-cols-12 min-h-[70vh]">
-        <div className="col-span-2 p-4 space-y-3 border-r border-slate-800">
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 min-h-[70vh]">
+        <div className="xl:col-span-2 p-4 space-y-3 border-r border-slate-800">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-16" rounded="xl" />
           ))}
         </div>
-        <div className="col-span-6 relative">
+        <div className="xl:col-span-6 relative min-h-[320px]">
           <MapSkeleton />
         </div>
-        <div className="col-span-4 border-l border-slate-800">
+        <div className="xl:col-span-4 border-l border-slate-800">
           <FeedSkeleton />
         </div>
       </div>
+    </div>
+  );
+}
+
+export function AdminShellSkeleton() {
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col" aria-busy="true">
+      <header className="h-14 border-b border-slate-800 px-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg border border-yellow-500/25 flex items-center justify-center bg-slate-900">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/Bika.png" alt="" className="w-5 h-5 object-contain" />
+          </div>
+          <Skeleton className="h-3 w-28" rounded="md" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20" rounded="xl" />
+          <Skeleton className="h-8 w-8" rounded="full" />
+        </div>
+      </header>
+      <div className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-56" rounded="lg" />
+          <Skeleton className="h-3 w-72" rounded="md" />
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-28" rounded="2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-48 w-full" rounded="2xl" />
+      </div>
+    </div>
+  );
+}
+
+export function ReassignSkeleton() {
+  return (
+    <div className="space-y-6 animate-fadeIn" aria-busy="true">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-8" rounded="lg" />
+        <div className="space-y-2">
+          <Skeleton className="h-6 w-40" rounded="md" />
+          <Skeleton className="h-3 w-56" rounded="md" />
+        </div>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-4">
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-full" rounded="xl" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full" rounded="xl" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-10 w-full" rounded="xl" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" rounded="xl" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function NotificationListSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div className="py-1" aria-busy="true">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="px-3 py-2.5 flex gap-2.5 border-b border-white/5 last:border-0">
+          <Skeleton className="w-2 h-2 mt-1.5 shrink-0" rounded="full" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3 w-4/5" rounded="md" />
+            <Skeleton className="h-2.5 w-1/2" rounded="md" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
