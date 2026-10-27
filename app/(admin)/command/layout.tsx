@@ -9,17 +9,11 @@ import { useIncidentsRealtime } from '@/app/lib/api/hooks/useRealtime';
 import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
 import { canRunWork, ROLE_LABELS } from '@/app/lib/rbac';
 import { toast } from 'sonner';
+import { CommandShellSkeleton } from '@/app/components/ui/Skeleton';
 
 export default function CommandLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-          <Loader2 className="w-6 h-6 animate-spin mr-2" />
-          Loading Command Centre…
-        </div>
-      }
-    >
+    <Suspense fallback={<CommandShellSkeleton />}>
       <CommandLayoutInner>{children}</CommandLayoutInner>
     </Suspense>
   );
@@ -43,12 +37,7 @@ function CommandLayoutInner({ children }: { children: React.ReactNode }) {
   };
 
   if (me.isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Loading Command Centre…
-      </div>
-    );
+    return <CommandShellSkeleton kiosk={kiosk} />;
   }
 
   if (me.isError || !me.data || !canRunWork(me.data.user.role)) {
@@ -72,7 +61,6 @@ function CommandLayoutInner({ children }: { children: React.ReactNode }) {
 
   const user = me.data.user;
 
-  // Wall mode: page owns the living chrome — layout is a full-bleed shell only.
   if (kiosk) {
     return (
       <div className="h-screen max-h-screen bg-[#05080f] text-slate-100 flex flex-col overflow-hidden">
