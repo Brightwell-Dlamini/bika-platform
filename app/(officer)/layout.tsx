@@ -149,6 +149,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-3">
           <Link href="/officer" className="flex items-center gap-2.5 shrink-0 group">
             <div className="w-9 h-9 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/Bika.png" alt="" className="w-full h-full object-contain" />
             </div>
             <div className="hidden sm:block">
@@ -177,11 +178,11 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
               disabled={dutyBusy}
               title={user.onDuty ? 'On duty — click to go off duty' : 'Off duty — click to go on duty'}
               aria-label={user.onDuty ? 'Go off duty' : 'Go on duty'}
-              className={`inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition disabled:opacity-50 ${
+              className={
                 user.onDuty
-                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
-                  : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
-              }`}
+                  ? 'inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition disabled:opacity-50 bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                  : 'inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition disabled:opacity-50 bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-800'
+              }
             >
               {dutyBusy ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -201,6 +202,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
               aria-label="Edit profile"
             >
               {user.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
               ) : (
                 <UserIcon className="w-4 h-4" />
@@ -234,34 +236,44 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = item.active;
+            const badgeClass = item.urgent
+              ? 'bg-rose-500 text-white'
+              : 'bg-yellow-500 text-slate-950';
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={`relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[44px] ${
-                  active ? 'text-yellow-400' : 'text-slate-500'
-                }`}
+                className={
+                  active
+                    ? 'relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[44px] text-yellow-400'
+                    : 'relative flex flex-col items-center justify-center gap-0.5 text-[10px] font-bold min-h-[44px] text-slate-500'
+                }
               >
                 <span
-                  className={`absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full transition-all ${
-                    active ? 'w-8 bg-yellow-400' : 'w-0'
-                  }`}
+                  className={
+                    active
+                      ? 'absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full transition-all w-8 bg-yellow-400'
+                      : 'absolute top-0 left-1/2 -translate-x-1/2 h-0.5 rounded-full transition-all w-0'
+                  }
                   aria-hidden
                 />
                 <span className="relative">
                   <span
-                    className={`flex items-center justify-center w-9 h-7 rounded-lg ${
-                      active ? 'bg-yellow-500/15' : ''
-                    }`}
+                    className={
+                      active
+                        ? 'flex items-center justify-center w-9 h-7 rounded-lg bg-yellow-500/15'
+                        : 'flex items-center justify-center w-9 h-7 rounded-lg'
+                    }
                   >
                     <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
                   </span>
                   {item.badge != null && item.badge > 0 && (
                     <span
-                      className={`absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ${
-                        item.urgent ? 'bg-rose-500 text-white' : 'bg-yellow-500 text-slate-950'
-                      }`}
+                      className={
+                        'absolute -top-1 -right-1 min-w-[1rem] h-4 px-1 rounded-full text-[9px] font-black flex items-center justify-center ' +
+                        badgeClass
+                      }
                     >
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
@@ -292,29 +304,31 @@ function OfficerNavPill({
   badge?: number;
   urgent?: boolean;
 }) {
+  let badgeClass = 'bg-slate-700 text-slate-200';
+  if (urgent) {
+    badgeClass = active ? 'bg-slate-950 text-rose-400' : 'bg-rose-500 text-white';
+  } else if (active) {
+    badgeClass = 'bg-slate-950 text-yellow-400';
+  }
+
   return (
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 ${
+      className={
         active
-          ? 'bg-yellow-500 text-slate-950 shadow-sm'
-          : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
-      }`}
+          ? 'relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 bg-yellow-500 text-slate-950 shadow-sm'
+          : 'relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-500 text-slate-400 hover:text-white hover:bg-slate-800/80'
+      }
     >
       <Icon className="w-3.5 h-3.5" />
       <span>{label}</span>
       {typeof badge === 'number' && badge > 0 && (
         <span
-          className={`min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[9px] font-black flex items-center justify-center ${
-            urgent
-              ? active
-                ? 'bg-slate-950 text-rose-400'
-                : 'bg-rose-500 text-white'
-              : active
-                ? 'bg-slate-950 text-yellow-400'
-                : 'bg-slate-700 text-slate-200'
-          }`}
+          className={
+            'min-w-[1.15rem] h-[1.15rem] px-1 rounded-full text-[9px] font-black flex items-center justify-center ' +
+            badgeClass
+          }
         >
           {badge > 99 ? '99+' : badge}
         </span>
