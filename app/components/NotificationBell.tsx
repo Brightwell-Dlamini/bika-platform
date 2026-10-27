@@ -22,9 +22,26 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const prevUnread = useRef<number | null>(null);
 
   const items = data?.items ?? [];
   const unread = data?.unreadCount ?? 0;
+
+  // Toast when new notifications arrive (poll or realtime invalidation)
+  useEffect(() => {
+    if (prevUnread.current === null) {
+      prevUnread.current = unread;
+      return;
+    }
+    if (unread > prevUnread.current) {
+      const latest = items.find((n) => !n.readAt);
+      toast.message(latest?.title ?? 'New BIKA alert', {
+        description: latest?.body?.slice(0, 120) ?? `${unread - prevUnread.current} new notification(s)`,
+        duration: 5000,
+      });
+    }
+    prevUnread.current = unread;
+  }, [unread, items]);
 
   useEffect(() => {
     if (!open) return;

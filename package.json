@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test:smoke": "node scripts/smoke-reference-id.mjs && node scripts/smoke-transitions.mjs",
+    "smoke:prod": "node scripts/smoke-prod.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

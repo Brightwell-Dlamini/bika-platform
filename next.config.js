@@ -10,7 +10,6 @@ const nextConfig = {
   transpilePackages: ['lucide-react'],
   serverExternalPackages: ['web-push'],
   typescript: {
-    // Re-enable after remaining legacy status-label comparisons are cleared.
     ignoreBuildErrors: true,
   },
   eslint: {
@@ -28,7 +27,8 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           {
             key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(self)',
+            // camera=(self) — evidence photos on report flow
+            value: 'camera=(self), microphone=(), geolocation=(self)',
           },
           {
             key: 'Strict-Transport-Security',

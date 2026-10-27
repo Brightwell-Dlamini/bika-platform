@@ -1,7 +1,7 @@
-/* BIKA Platform – Service Worker v6.2.0
+/* BIKA Platform – Service Worker v6.2.1
  * Network-first for documents and Next.js bundles; Web Push handlers for OPS.
  */
-const CACHE_NAME = 'bika-v62-notifications';
+const CACHE_NAME = 'bika-v621-excellence';
 const PRECACHE_URLS = [
   '/manifest.json',
   '/icons/icon-192.png',
