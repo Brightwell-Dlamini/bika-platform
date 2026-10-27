@@ -4,10 +4,13 @@ import { createServiceSupabase, getCallerProfile } from '@/app/lib/supabase/serv
 import { isPublic } from '@/app/lib/rbac';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
-import { mapEvent } from '@/app/lib/mappers/incident';
+import { mapEvent, mapIncident } from '@/app/lib/mappers/incident';
+import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
+import { officerNoteAdded } from '@/app/lib/notifications/templates';
 import type { ApiResponse, IncidentEvent } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const bodySchema = z.object({
   body: z.string().min(1).max(4000),
@@ -59,7 +62,7 @@ export async function POST(
 
   const { data: incident, error: fetchError } = await supabase
     .from('incidents')
-    .select('id')
+    .select('*')
     .eq('id', id)
     .maybeSingle();
 
@@ -108,6 +111,30 @@ export async function POST(
     actorId: caller.id,
     isPublic: noteIsPublic,
   });
+
+  const assigneeId = incident.assigned_officer_id as string | null;
+  if (assigneeId && assigneeId !== caller.id) {
+    void (async () => {
+      try {
+        const mapped = mapIncident(incident as Record<string, unknown>);
+        const msg = officerNoteAdded(mapped, caller.name, noteIsPublic, noteBody);
+        await dispatch({
+          channels: defaultStaffChannels(),
+          incidentId: id,
+          eventType: 'incident.note_added',
+          recipientUserIds: [assigneeId],
+          href: `/officer/case/${id}`,
+          payload: {
+            subject: msg.subject,
+            body: msg.body,
+            data: { incidentId: id, isPublic: noteIsPublic },
+          },
+        });
+      } catch (err) {
+        logger.warn('note_notify_failed', { requestId, incidentId: id, error: String(err) });
+      }
+    })();
+  }
 
   const body: ApiResponse<{ event: IncidentEvent }> = {
     ok: true,

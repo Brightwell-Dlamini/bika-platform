@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServiceSupabase } from '@/app/lib/supabase/server';
 import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
 import { slaBreachAlert } from '@/app/lib/notifications/templates';
+import { loadSupervisorIds, uniqueIds } from '@/app/lib/notifications/recipients';
 import { logger } from '@/app/lib/logger';
 import { env } from '@/app/lib/env';
 import { mapIncident } from '@/app/lib/mappers/incident';
@@ -55,6 +56,7 @@ export async function GET(req: NextRequest) {
   const overdue = data ?? [];
   let escalated = 0;
   let notified = 0;
+  const supervisors = await loadSupervisorIds(supabase);
 
   for (const row of overdue) {
     const incident = mapIncident(row as Record<string, unknown>);
@@ -100,12 +102,15 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!recentLog || recentLog.length === 0) {
+      const recipients = uniqueIds(incident.assignedOfficerId, supervisors);
+      if (recipients.length === 0) continue;
+
       const msg = slaBreachAlert(incident, overdueMins);
       const result = await dispatch({
         channels: defaultStaffChannels(),
         incidentId: incident.id,
         eventType: 'sla.breach',
-        recipientUserIds: incident.assignedOfficerId ? [incident.assignedOfficerId] : undefined,
+        recipientUserIds: recipients,
         href: `/officer/case/${incident.id}`,
         payload: {
           subject: msg.subject,

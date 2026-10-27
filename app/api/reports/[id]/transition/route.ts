@@ -7,11 +7,18 @@ import {
 import { isPublic } from '@/app/lib/rbac';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
-import { dispatch } from '@/app/lib/notifications/dispatcher';
+import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
 import {
   citizenStatusChange,
   citizenResolved,
+  officerStatusChange,
+  officerEscalation,
 } from '@/app/lib/notifications/templates';
+import {
+  excludeIds,
+  loadSupervisorIds,
+  uniqueIds,
+} from '@/app/lib/notifications/recipients';
 import { mapIncident } from '@/app/lib/mappers/incident';
 import {
   ALLOWED_TRANSITIONS,
@@ -21,6 +28,18 @@ import {
 import type { ApiResponse, Incident, IncidentStatus } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+/** Statuses that should ping the assignee (skip noise like submitted). */
+const STAFF_NOTIFY_STATUSES: IncidentStatus[] = [
+  'triaged',
+  'in_progress',
+  'awaiting_info',
+  'escalated',
+  'resolved',
+  'closed',
+  'rejected',
+];
 
 const bodySchema = z.object({
   to: z.enum([
@@ -208,6 +227,26 @@ export async function POST(
     actorRole: caller.role,
   });
 
+  // Staff in-app/push (assignee; supervisors on escalate)
+  if (STAFF_NOTIFY_STATUSES.includes(to)) {
+    void notifyStaffStatusChange({
+      incidentId: id,
+      from: current,
+      to,
+      actorId: caller.id,
+      actorName: caller.name,
+      note: note ?? null,
+      row: updated as Record<string, unknown>,
+    }).catch((err) => {
+      logger.warn('transition_staff_notify_failed', {
+        requestId,
+        incidentId: id,
+        error: String(err),
+      });
+    });
+  }
+
+  // Optional citizen SMS/email (legacy channels — skipped if not configured)
   if (CITIZEN_NOTIFY_STATUSES.includes(to)) {
     try {
       await notifyCitizenStatusChange(id, to, updated as Record<string, unknown>);
@@ -225,6 +264,65 @@ export async function POST(
     data: { incident: mapIncident(updated as Record<string, unknown>) },
   };
   return NextResponse.json(body);
+}
+
+async function notifyStaffStatusChange(input: {
+  incidentId: string;
+  from: IncidentStatus;
+  to: IncidentStatus;
+  actorId: string;
+  actorName: string;
+  note: string | null;
+  row: Record<string, unknown>;
+}): Promise<void> {
+  const supabase = createServiceSupabase();
+  const incident = mapIncident(input.row);
+  const channels = defaultStaffChannels();
+  const assigneeId = incident.assignedOfficerId;
+
+  if (input.to === 'escalated') {
+    const supervisors = await loadSupervisorIds(supabase);
+    const recipients = excludeIds(
+      uniqueIds(assigneeId, supervisors),
+      input.actorId
+    );
+    if (recipients.length === 0) return;
+
+    const msg = officerEscalation(
+      incident,
+      input.note || `Status moved to escalated from ${input.from}`,
+      input.actorName
+    );
+    await dispatch({
+      channels,
+      incidentId: input.incidentId,
+      eventType: 'incident.escalated',
+      recipientUserIds: recipients,
+      href: `/officer/case/${input.incidentId}`,
+      payload: {
+        subject: msg.subject,
+        body: msg.body,
+        data: { incidentId: input.incidentId, from: input.from, to: input.to },
+      },
+    });
+    return;
+  }
+
+  if (!assigneeId || assigneeId === input.actorId) return;
+
+  const msg = officerStatusChange(incident, input.from, input.to, input.actorName);
+  await dispatch({
+    channels,
+    incidentId: input.incidentId,
+    eventType: `incident.status.${input.to}`,
+    recipientUserIds: [assigneeId],
+    href: `/officer/case/${input.incidentId}`,
+    payload: {
+      subject: msg.subject,
+      body: msg.body,
+      data: { incidentId: input.incidentId, from: input.from, to: input.to },
+    },
+  });
 }
 
 async function notifyCitizenStatusChange(
