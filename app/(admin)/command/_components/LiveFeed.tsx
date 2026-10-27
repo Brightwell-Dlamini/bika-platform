@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Clock, Loader2, ArrowRight } from 'lucide-react';
+import { Clock, ArrowRight } from 'lucide-react';
+import { FeedSkeleton } from '@/app/components/ui/Skeleton';
 import type { Incident, IncidentStatus, Severity } from '@/app/types';
 
 const SEV_STYLE: Record<Severity, string> = {
@@ -29,7 +30,6 @@ interface LiveFeedProps {
   selectedIncidentId: string | null;
   onSelectIncident: (id: string) => void;
   kiosk?: boolean;
-  /** Slow continuous scroll for wall displays */
   autoScroll?: boolean;
 }
 
@@ -87,9 +87,8 @@ export function LiveFeed({
       </div>
 
       {isLoading ? (
-        <div className="flex-1 flex items-center justify-center text-slate-500 text-xs">
-          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          Loading feed…
+        <div className="flex-1 min-h-0">
+          <FeedSkeleton rows={7} />
         </div>
       ) : incidents.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-slate-500 text-xs p-6 text-center">
