@@ -23,6 +23,7 @@ import { qk } from '@/app/lib/api/queryKeys';
 import { ROLE_LABELS, isSuperAdmin, isAdmin } from '@/app/lib/rbac';
 import { SessionIdleGuard } from '@/app/components/SessionIdleGuard';
 import { NotificationBell } from '@/app/components/NotificationBell';
+import { OfficerShellSkeleton } from '@/app/components/ui/Skeleton';
 import { toast } from 'sonner';
 
 export default function OfficerLayout({ children }: { children: React.ReactNode }) {
@@ -64,12 +65,7 @@ export default function OfficerLayout({ children }: { children: React.ReactNode 
   };
 
   if (me.isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Loading officer workspace…
-      </div>
-    );
+    return <OfficerShellSkeleton />;
   }
 
   if (me.isError || !me.data) {
