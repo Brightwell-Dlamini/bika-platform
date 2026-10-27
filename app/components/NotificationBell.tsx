@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Bell, CheckCheck, Loader2, Radio } from 'lucide-react';
+import { NotificationListSkeleton } from '@/app/components/ui/Skeleton';
 import { useNotifications, useMarkNotificationsRead } from '@/app/lib/api/hooks/useNotifications';
 import { apiFetch } from '@/app/lib/api/fetcher';
 import { toast } from 'sonner';
@@ -27,7 +28,6 @@ export function NotificationBell() {
   const items = data?.items ?? [];
   const unread = data?.unreadCount ?? 0;
 
-  // Toast when new notifications arrive (poll or realtime invalidation)
   useEffect(() => {
     if (prevUnread.current === null) {
       prevUnread.current = unread;
@@ -52,52 +52,38 @@ export function NotificationBell() {
     return () => document.removeEventListener('mousedown', onDoc);
   }, [open]);
 
+  const onOpenItem = (id: string) => {
+    markRead.mutate({ ids: [id] });
+  };
+
   const enablePush = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      toast.error('Push is not supported in this browser.');
-      return;
-    }
     setPushBusy(true);
     try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        toast.error('Push not supported on this device.');
+        return;
+      }
       const perm = await Notification.requestPermission();
       if (perm !== 'granted') {
         toast.error('Notification permission denied.');
         return;
       }
-      const vapid = await apiFetch<{ publicKey: string; configured: boolean }>(
-        '/api/notifications/vapid'
-      );
-      if (!vapid.configured || !vapid.publicKey) {
-        toast.error('Push is not configured on the server yet (VAPID keys).');
-        return;
-      }
       const reg = await navigator.serviceWorker.ready;
+      const { publicKey } = await apiFetch<{ publicKey: string }>('/api/notifications/push');
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid.publicKey),
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
-      const json = sub.toJSON();
       await apiFetch('/api/notifications/push', {
         method: 'POST',
-        body: {
-          endpoint: json.endpoint,
-          keys: { p256dh: json.keys?.p256dh, auth: json.keys?.auth },
-        },
+        body: { subscription: sub.toJSON() },
       });
-      toast.success('Push notifications enabled on this device.');
+      toast.success('Push enabled.');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not enable push.');
     } finally {
       setPushBusy(false);
     }
-  };
-
-  const onMarkAll = () => {
-    markRead.mutate({ all: true });
-  };
-
-  const onOpenItem = (id: string) => {
-    markRead.mutate({ ids: [id] });
   };
 
   return (
@@ -106,8 +92,7 @@ export function NotificationBell() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 rounded-xl text-slate-400 hover:text-yellow-400 hover:bg-slate-900 border border-transparent hover:border-slate-800 transition"
-        aria-label={unread > 0 ? `${unread} unread notifications` : 'Notifications'}
-        aria-expanded={open}
+        aria-label="Notifications"
       >
         <Bell className="w-4 h-4" />
         {unread > 0 && (
@@ -120,14 +105,14 @@ export function NotificationBell() {
       {open && (
         <div className="absolute right-0 mt-2 w-[min(100vw-1.5rem,22rem)] rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl z-50 overflow-hidden">
           <div className="px-3 py-2.5 border-b border-slate-800 flex items-center justify-between gap-2">
-            <span className="text-xs font-black text-white">Notifications</span>
+            <span className="text-[11px] font-black text-white uppercase tracking-wider">Alerts</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                onClick={enablePush}
+                onClick={() => void enablePush()}
                 disabled={pushBusy}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 hover:text-yellow-400 hover:bg-slate-900 disabled:opacity-50"
-                title="Enable push on this device"
+                title="Enable push"
               >
                 {pushBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Radio className="w-3 h-3" />}
                 Push
@@ -135,7 +120,7 @@ export function NotificationBell() {
               {unread > 0 && (
                 <button
                   type="button"
-                  onClick={onMarkAll}
+                  onClick={() => markRead.mutate({ all: true })}
                   disabled={markRead.isPending}
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-slate-300 hover:text-emerald-400 hover:bg-slate-900"
                 >
@@ -147,11 +132,7 @@ export function NotificationBell() {
           </div>
 
           <div className="max-h-80 overflow-y-auto">
-            {isLoading && (
-              <div className="p-6 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" /> Loading…
-              </div>
-            )}
+            {isLoading && <NotificationListSkeleton rows={5} />}
             {!isLoading && error && (
               <div className="p-6 text-center text-xs text-red-300">
                 {error instanceof Error ? error.message : 'Could not load notifications.'}
