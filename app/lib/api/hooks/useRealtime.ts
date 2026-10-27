@@ -8,21 +8,7 @@ import { qk } from '@/app/lib/api/queryKeys';
 import { logger } from '@/app/lib/logger';
 
 /**
- * BIKA v2 — Realtime → React Query bridge.
- *
- * Subscribes to incidents + incident_events and invalidates queries
- * whenever anything changes. TanStack Query refetches only the queries
- * that are currently mounted.
- *
- * Two important behaviors:
- *
- * 1. UNIQUE CHANNEL NAME per mount. Supabase realtime treats channels
- *    as globals keyed by name — reusing "bika-incidents-live" across
- *    two simultaneous mounts causes the "cannot add callbacks after
- *    subscribe" error. We generate a unique suffix.
- *
- * 2. SINGLE SUBSCRIBE PER MOUNT. All .on() calls happen before .subscribe().
- *    The channel is torn down on unmount via removeChannel.
+ * Realtime → React Query bridge for incidents, events, and notifications.
  */
 export function useIncidentsRealtime() {
   const qc = useQueryClient();
@@ -32,9 +18,6 @@ export function useIncidentsRealtime() {
     if (!result.ok) return;
 
     const supabase = result.client;
-
-    // Unique channel name — prevents collisions when two components
-    // mount this hook at the same time (React Strict Mode, nested layouts).
     const channelName = `bika-live-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     let channel: RealtimeChannel | null = null;
@@ -52,10 +35,9 @@ export function useIncidentsRealtime() {
               (payload.new as { id?: string } | null)?.id ??
               (payload.old as { id?: string } | null)?.id;
 
-            // Always invalidate lists
             qc.invalidateQueries({ queryKey: qk.incidents.lists() });
+            qc.invalidateQueries({ queryKey: qk.users.me() });
 
-            // Invalidate the specific detail if we know the id
             if (id) {
               qc.invalidateQueries({ queryKey: qk.incidents.detail(id) });
             }
@@ -72,6 +54,14 @@ export function useIncidentsRealtime() {
             }
           }
         )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'notifications' },
+          () => {
+            if (isTornDown) return;
+            qc.invalidateQueries({ queryKey: qk.notifications.all });
+          }
+        )
         .subscribe((status, err) => {
           if (err) {
             logger.warn('realtime_subscribe_error', {
@@ -82,7 +72,6 @@ export function useIncidentsRealtime() {
           }
         });
     } catch (err) {
-      // Realtime is a nice-to-have. If it fails, the app still works.
       logger.warn('realtime_setup_failed', { error: String(err) });
       return;
     }

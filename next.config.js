@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Required for Hostinger / non-Vercel Node hosts (smaller runtime, official prod server)
-  // output: 'standalone',
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
@@ -10,20 +8,36 @@ const nextConfig = {
     ],
   },
   transpilePackages: ['lucide-react'],
-  // Keep native / CJS packages out of the bundler (web-push uses Node crypto/http)
   serverExternalPackages: ['web-push'],
   typescript: {
-    // Temporary: legacy dashboard components still compare Title-Case statuses
-    // against the v2 lowercase IncidentStatus union. Re-enable strict checks
-    // after UI is fully aligned to app/types. Target: re-enable in v1.4.
+    // Re-enable after remaining legacy status-label comparisons are cleared.
     ignoreBuildErrors: true,
   },
   eslint: {
-    // Lint runs via `npm run lint` / CI; keep builds unblocked until ESLint is green.
     ignoreDuringBuilds: true,
   },
   poweredByHeader: false,
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(self)',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
