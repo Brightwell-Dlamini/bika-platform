@@ -17,9 +17,12 @@ import {
 import { toast } from 'sonner';
 import { useIncidents } from '@/app/lib/api/hooks/useIncidents';
 import { useOfficerMe } from '@/app/lib/api/hooks/useOfficerMe';
-import { useAcknowledgeIncident } from '@/app/lib/api/mutations/useIncidentActions';
+import {
+  useAcknowledgeIncident,
+  useAssignIncident,
+} from '@/app/lib/api/mutations/useIncidentActions';
 import { statusLabel, statusColor } from '@/app/lib/statusLabels';
-import type { Incident, IncidentStatus, Severity } from '@/app/types';
+import type { AgencyCode, Incident, IncidentStatus, Severity } from '@/app/types';
 import { QueueKeyboardNav } from './_components/QueueKeyboardNav';
 
 const SEVERITY_RAIL: Record<Severity, string> = {
@@ -95,6 +98,7 @@ export default function QueuePage() {
 
   const incidents = useIncidents(filters as never, {
     enabled: scope !== 'mine' || Boolean(me.data),
+    refetchInterval: 10_000,
   });
 
   const rows = incidents.data?.incidents ?? [];
@@ -116,6 +120,12 @@ export default function QueuePage() {
     <div className="space-y-5 animate-fadeIn">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+              Live queue
+            </span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Case queue</h1>
           <p className="text-xs text-slate-400 mt-1.5">
             <span className="text-slate-200 font-semibold">{rows.length}</span> shown
@@ -126,6 +136,7 @@ export default function QueuePage() {
               </>
             ) : null}
             {overdue ? <span className="text-rose-400"> · overdue only</span> : null}
+            <span className="text-slate-600"> · updates automatically</span>
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -248,7 +259,15 @@ export default function QueuePage() {
           <div className="space-y-2.5">
             {rows.map((inc) => (
               <div key={inc.id} data-kbd-row>
-                <CaseRow incident={inc} currentUserId={me.data?.user.id} />
+                <CaseRow
+                  incident={inc}
+                  currentUserId={me.data?.user.id}
+                  agencyCode={
+                    (inc.assignedAgencyCode as AgencyCode | null) ||
+                    me.data?.user.agencyCode ||
+                    'BIKA'
+                  }
+                />
               </div>
             ))}
           </div>
@@ -261,9 +280,11 @@ export default function QueuePage() {
 function CaseRow({
   incident,
   currentUserId,
+  agencyCode,
 }: {
   incident: Incident;
   currentUserId?: string;
+  agencyCode: AgencyCode | string;
 }) {
   const overdue =
     incident.slaDueAt &&
@@ -275,7 +296,13 @@ function CaseRow({
     ['submitted', 'triaged', 'assigned'].includes(incident.status) &&
     (!incident.assignedOfficerId || incident.assignedOfficerId === currentUserId);
 
+  const canClaim =
+    Boolean(currentUserId) &&
+    !incident.assignedOfficerId &&
+    !['closed', 'resolved', 'rejected'].includes(incident.status);
+
   const acknowledge = useAcknowledgeIncident(incident.id);
+  const assign = useAssignIncident(incident.id);
 
   const handleAcknowledge = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -284,6 +311,23 @@ function CaseRow({
       onSuccess: () => toast.success(`Acknowledged ${incident.id}`),
       onError: (err) => toast.error(err.message || 'Could not acknowledge'),
     });
+  };
+
+  const handleClaim = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUserId) return;
+    assign.mutate(
+      {
+        officerId: currentUserId,
+        agencyCode: agencyCode as AgencyCode,
+        reason: 'Self-claim from queue',
+      },
+      {
+        onSuccess: () => toast.success(`Claimed ${incident.id}`),
+        onError: (err) => toast.error(err.message || 'Could not claim case'),
+      }
+    );
   };
 
   return (
@@ -343,6 +387,21 @@ function CaseRow({
             {new Date(incident.createdAt).toLocaleString()}
           </div>
           <div className="flex items-center justify-end gap-2 pt-0.5">
+            {canClaim && (
+              <button
+                type="button"
+                onClick={handleClaim}
+                disabled={assign.isPending}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-slate-950 text-[10px] font-black disabled:opacity-50"
+              >
+                {assign.isPending ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <UserPlus className="w-3 h-3" />
+                )}
+                Claim
+              </button>
+            )}
             {canAcknowledge && (
               <button
                 type="button"
