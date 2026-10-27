@@ -22,6 +22,7 @@ import { apiFetch } from '@/app/lib/api/fetcher';
 import { qk } from '@/app/lib/api/queryKeys';
 import { ROLE_LABELS, canReassignAnyCase } from '@/app/lib/rbac';
 import { statusLabel, statusColor } from '@/app/lib/statusLabels';
+import { DashboardSkeleton, Skeleton } from '@/app/components/ui/Skeleton';
 
 export default function OfficerDashboardPage() {
   const me = useOfficerMe();
@@ -34,12 +35,7 @@ export default function OfficerDashboardPage() {
   );
 
   if (me.isLoading || !me.data) {
-    return (
-      <div className="flex items-center justify-center py-24 text-slate-500">
-        <Loader2 className="w-5 h-5 animate-spin mr-2" />
-        Loading workspace…
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const { user, queue } = me.data;
@@ -67,7 +63,6 @@ export default function OfficerDashboardPage() {
 
   return (
     <div className="space-y-7 animate-fadeIn">
-      {/* Command hero */}
       <section className="relative overflow-hidden rounded-[1.75rem] border border-white/[0.06] bg-[#070b12]">
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute -top-24 -right-16 w-[28rem] h-[28rem] rounded-full bg-yellow-500/[0.07] blur-3xl" />
@@ -169,72 +164,41 @@ export default function OfficerDashboardPage() {
         </div>
       </section>
 
-      {/* KPI monoliths */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Kpi
-          label="Assigned"
-          value={queue.assignedToMe}
-          href="/officer/queue?scope=mine"
-          icon={Inbox}
-        />
-        <Kpi
-          label="Unassigned"
-          value={queue.unassignedInMyScope}
-          href="/officer/queue?scope=unassigned"
-          icon={Activity}
-          tone="sky"
-        />
-        <Kpi
-          label="Overdue · mine"
-          value={queue.slaOverdueMine}
-          href="/officer/queue?scope=mine&overdue=1"
-          icon={Clock}
-          tone="rose"
-          pulse={queue.slaOverdueMine > 0}
-        />
-        <Kpi
-          label="Overdue · scope"
-          value={queue.slaOverdueInMyScope}
-          href="/officer/queue?overdue=1"
-          icon={AlertTriangle}
-          tone="orange"
-          pulse={queue.slaOverdueInMyScope > 0}
-        />
-        <Kpi
-          label="Resolved 7d"
-          value={queue.resolvedByMe7d}
-          href="/officer/queue?scope=resolved"
-          icon={CheckCircle2}
-          tone="emerald"
-        />
+        <Kpi label="Assigned" value={queue.assignedToMe} href="/officer/queue?scope=mine" icon={Inbox} />
+        <Kpi label="Unassigned" value={queue.unassignedInMyScope} href="/officer/queue?scope=unassigned" icon={Activity} tone="sky" />
+        <Kpi label="Overdue · mine" value={queue.slaOverdueMine} href="/officer/queue?scope=mine&overdue=1" icon={Clock} tone="rose" pulse={queue.slaOverdueMine > 0} />
+        <Kpi label="Overdue · scope" value={queue.slaOverdueInMyScope} href="/officer/queue?overdue=1" icon={AlertTriangle} tone="orange" pulse={queue.slaOverdueInMyScope > 0} />
+        <Kpi label="Resolved 7d" value={queue.resolvedByMe7d} href="/officer/queue?scope=resolved" icon={CheckCircle2} tone="emerald" />
       </div>
 
-      {/* Open cases */}
       <section className="rounded-[1.75rem] border border-white/[0.06] bg-[#0a0e16] overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-5 sm:px-6 py-4 border-b border-white/[0.05]">
           <div>
             <h2 className="text-sm font-black text-white tracking-tight">Open on your desk</h2>
             <p className="text-[11px] text-slate-500 mt-0.5">Most recent active assignments</p>
           </div>
-          <Link
-            href="/officer/queue?scope=mine"
-            className="text-[11px] font-bold text-yellow-400 hover:text-yellow-300 inline-flex items-center gap-0.5"
-          >
+          <Link href="/officer/queue?scope=mine" className="text-[11px] font-bold text-yellow-400 hover:text-yellow-300 inline-flex items-center gap-0.5">
             Full queue <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {mine.isLoading ? (
-          <div className="flex items-center justify-center gap-2 text-slate-500 text-xs py-14">
-            <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+          <div className="px-5 sm:px-6 py-4 space-y-3" aria-busy="true">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex justify-between gap-4">
+                <div className="space-y-2 flex-1">
+                  <Skeleton className="h-3 w-24" rounded="md" />
+                  <Skeleton className="h-4 w-2/3 max-w-xs" rounded="md" />
+                </div>
+                <Skeleton className="h-3 w-14" rounded="md" />
+              </div>
+            ))}
           </div>
         ) : recent.length === 0 ? (
           <div className="px-6 py-14 text-center">
             <p className="text-sm text-slate-400">No open cases assigned to you.</p>
-            <Link
-              href="/officer/queue?scope=unassigned"
-              className="inline-flex mt-3 text-xs font-bold text-yellow-400 hover:underline"
-            >
+            <Link href="/officer/queue?scope=unassigned" className="inline-flex mt-3 text-xs font-bold text-yellow-400 hover:underline">
               Browse unassigned queue
             </Link>
           </div>
@@ -242,18 +206,11 @@ export default function OfficerDashboardPage() {
           <ul className="divide-y divide-white/[0.04]">
             {recent.slice(0, 6).map((inc) => (
               <li key={inc.id}>
-                <Link
-                  href={`/officer/case/${inc.id}`}
-                  className="flex items-center justify-between gap-4 px-5 sm:px-6 py-3.5 hover:bg-white/[0.03] transition group"
-                >
+                <Link href={`/officer/case/${inc.id}`} className="flex items-center justify-between gap-4 px-5 sm:px-6 py-3.5 hover:bg-white/[0.03] transition group">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[11px] font-bold text-yellow-400">
-                        {inc.id}
-                      </span>
-                      <span
-                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${statusColor(inc.status)}`}
-                      >
+                      <span className="font-mono text-[11px] font-bold text-yellow-400">{inc.id}</span>
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md ${statusColor(inc.status)}`}>
                         {statusLabel(inc.status)}
                       </span>
                     </div>
@@ -317,9 +274,7 @@ function Kpi({
         <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-rose-500 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]" />
       )}
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
-          {label}
-        </span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">{label}</span>
         <Icon className="w-3.5 h-3.5 opacity-60" />
       </div>
       <div className="mt-3 text-3xl font-black font-mono tabular-nums tracking-tight">{value}</div>
