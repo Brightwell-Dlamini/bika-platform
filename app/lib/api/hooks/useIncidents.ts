@@ -32,6 +32,10 @@ export function useIncidents(
       const qs = params.toString();
       return apiFetch<IncidentsResponse>(`/api/reports${qs ? `?${qs}` : ''}`);
     },
+    // Live ops surfaces: stay fresh; realtime triggers active refetches
+    staleTime: 3_000,
+    refetchOnWindowFocus: true,
+    refetchInterval: 15_000,
     ...options,
   });
 }

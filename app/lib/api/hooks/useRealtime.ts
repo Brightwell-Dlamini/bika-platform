@@ -8,7 +8,8 @@ import { qk } from '@/app/lib/api/queryKeys';
 import { logger } from '@/app/lib/logger';
 
 /**
- * Realtime → React Query bridge for incidents, events, and notifications.
+ * Realtime → React Query bridge.
+ * Uses refetchQueries so Wall / queue / KPIs update immediately without a full page reload.
  */
 export function useIncidentsRealtime() {
   const qc = useQueryClient();
@@ -23,6 +24,16 @@ export function useIncidentsRealtime() {
     let channel: RealtimeChannel | null = null;
     let isTornDown = false;
 
+    const bumpIncidents = (id?: string | null) => {
+      if (isTornDown) return;
+      // Active queries only — instant UI refresh
+      void qc.refetchQueries({ queryKey: qk.incidents.lists(), type: 'active' });
+      void qc.refetchQueries({ queryKey: qk.users.me(), type: 'active' });
+      if (id) {
+        void qc.refetchQueries({ queryKey: qk.incidents.detail(id), type: 'active' });
+      }
+    };
+
     try {
       channel = supabase
         .channel(channelName)
@@ -30,28 +41,18 @@ export function useIncidentsRealtime() {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'incidents' },
           (payload) => {
-            if (isTornDown) return;
             const id =
               (payload.new as { id?: string } | null)?.id ??
               (payload.old as { id?: string } | null)?.id;
-
-            qc.invalidateQueries({ queryKey: qk.incidents.lists() });
-            qc.invalidateQueries({ queryKey: qk.users.me() });
-
-            if (id) {
-              qc.invalidateQueries({ queryKey: qk.incidents.detail(id) });
-            }
+            bumpIncidents(id);
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'incident_events' },
           (payload) => {
-            if (isTornDown) return;
             const incidentId = (payload.new as { incident_id?: string } | null)?.incident_id;
-            if (incidentId) {
-              qc.invalidateQueries({ queryKey: qk.incidents.detail(incidentId) });
-            }
+            if (incidentId) bumpIncidents(incidentId);
           }
         )
         .on(
@@ -59,7 +60,7 @@ export function useIncidentsRealtime() {
           { event: '*', schema: 'public', table: 'notifications' },
           () => {
             if (isTornDown) return;
-            qc.invalidateQueries({ queryKey: qk.notifications.all });
+            void qc.refetchQueries({ queryKey: qk.notifications.all, type: 'active' });
           }
         )
         .subscribe((status, err) => {
@@ -69,6 +70,8 @@ export function useIncidentsRealtime() {
               status,
               error: String(err),
             });
+          } else {
+            logger.info('realtime_subscribed', { channelName, status });
           }
         });
     } catch (err) {
