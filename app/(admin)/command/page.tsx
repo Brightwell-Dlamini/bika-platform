@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, Suspense, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { FilterBar } from './_components/FilterBar';
 import { KpiRail } from './_components/KpiRail';
 import { MapPanel } from './_components/MapPanel';
@@ -101,7 +102,6 @@ function CommandPageInner() {
       const next = new URLSearchParams(sp.toString());
       if (!region) next.delete('region');
       else next.set('region', region);
-      // preserve kiosk flags
       if (kiosk) {
         next.set('kiosk', '1');
         if (layout !== 'balanced') next.set('layout', layout);
@@ -116,7 +116,7 @@ function CommandPageInner() {
     setSelectedIncidentId(id && id.length > 0 ? id : null);
   }, []);
 
-  const incidents = useIncidents(filters);
+  const incidents = useIncidents(filters, { refetchInterval: 8_000 });
 
   const sorted = useMemo(() => {
     const list = [...(incidents.data?.incidents ?? [])];
@@ -152,9 +152,7 @@ function CommandPageInner() {
   const criticalCount = openList.filter((i) => i.severity === 'CRITICAL').length;
   const overdueCount = sla.data?.overdue ?? 0;
 
-  // New-incident theatre + audio
   useEffect(() => {
-    if (!kiosk) return;
     const ids = new Set(sorted.map((i) => i.id));
     if (!primed.current) {
       prevIds.current = ids;
@@ -163,20 +161,31 @@ function CommandPageInner() {
     }
     const newcomers = sorted.filter((i) => !prevIds.current.has(i.id));
     prevIds.current = ids;
-    const alertable = newcomers.find(
-      (i) => i.severity === 'CRITICAL' || i.severity === 'HIGH'
-    );
+    if (newcomers.length === 0) return;
+
+    const alertable =
+      newcomers.find((i) => i.severity === 'CRITICAL') ||
+      newcomers.find((i) => i.severity === 'HIGH') ||
+      newcomers[0];
+
     if (!alertable) return;
-    setFlash(alertable);
-    handleSelectIncident(alertable.id);
-    if (shouldPlayWallAudio(alertable.severity, audioEnabled)) {
-      playWallTone(alertable.severity);
+
+    if (kiosk) {
+      setFlash(alertable);
+      handleSelectIncident(alertable.id);
+      if (shouldPlayWallAudio(alertable.severity, audioEnabled)) {
+        playWallTone(alertable.severity);
+      }
+      const t = window.setTimeout(() => setFlash(null), 10000);
+      return () => window.clearTimeout(t);
     }
-    const t = window.setTimeout(() => setFlash(null), 10000);
-    return () => window.clearTimeout(t);
+
+    toast.message(`${alertable.severity}: ${alertable.id}`, {
+      description: `${alertable.category} · ${alertable.location}`,
+      duration: alertable.severity === 'CRITICAL' ? 12_000 : 6_000,
+    });
   }, [sorted, kiosk, audioEnabled, handleSelectIncident]);
 
-  // Featured case rotation (CRITICAL/HIGH open)
   useEffect(() => {
     if (!kiosk) return;
     const pool = openList.filter(
@@ -190,7 +199,6 @@ function CommandPageInner() {
     return () => window.clearInterval(id);
   }, [kiosk, openList, handleSelectIncident]);
 
-  // Region rotation
   useEffect(() => {
     if (!kiosk || !rotateRegions) return;
     const id = window.setInterval(() => {
