@@ -143,6 +143,23 @@ export function officerNoteAdded(
   };
 }
 
+export function officerCitizenRating(
+  incident: Incident,
+  score: number,
+  comment?: string | null
+): RenderedMessage {
+  const stars = '★'.repeat(score) + '☆'.repeat(5 - score);
+  return {
+    subject: `[BIKA] Citizen rated ${incident.id}: ${score}/5`,
+    body:
+      `A citizen rated case ${incident.id}.\n\n` +
+      `Score: ${stars} (${score}/5)\n` +
+      (comment ? `Comment: ${comment.slice(0, 200)}\n` : '') +
+      `Location: ${incident.location}\n\n` +
+      `Open: /officer/case/${incident.id}`,
+  };
+}
+
 export function officerEscalation(
   incident: Incident,
   reason: string,

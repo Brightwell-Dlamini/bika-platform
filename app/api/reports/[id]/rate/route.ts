@@ -4,9 +4,13 @@ import { createServiceSupabase } from '@/app/lib/supabase/server';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
 import { rateLimit, clientIpFromHeaders } from '@/app/lib/rateLimit';
+import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
+import { officerCitizenRating } from '@/app/lib/notifications/templates';
+import { mapIncident } from '@/app/lib/mappers/incident';
 import type { ApiResponse } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const bodySchema = z.object({
   score: z.number().int().min(1).max(5),
@@ -62,7 +66,7 @@ export async function POST(
 
   const { data: incident, error: fetchError } = await supabase
     .from('incidents')
-    .select('id, status, citizen_rating_score')
+    .select('*')
     .eq('id', id)
     .maybeSingle();
 
@@ -130,6 +134,34 @@ export async function POST(
   });
 
   logger.info('citizen_rated', { requestId, incidentId: id, score });
+
+  const assigneeId = incident.assigned_officer_id as string | null;
+  if (assigneeId) {
+    void (async () => {
+      try {
+        const mapped = mapIncident(incident as Record<string, unknown>);
+        const msg = officerCitizenRating(mapped, score, comment ?? null);
+        await dispatch({
+          channels: defaultStaffChannels(),
+          incidentId: id,
+          eventType: 'incident.rated',
+          recipientUserIds: [assigneeId],
+          href: `/officer/case/${id}`,
+          payload: {
+            subject: msg.subject,
+            body: msg.body,
+            data: { incidentId: id, score },
+          },
+        });
+      } catch (err) {
+        logger.warn('rate_notify_failed', {
+          requestId,
+          incidentId: id,
+          error: String(err),
+        });
+      }
+    })();
+  }
 
   const body: ApiResponse<{ score: number }> = {
     ok: true,
