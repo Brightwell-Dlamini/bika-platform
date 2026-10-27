@@ -5,7 +5,13 @@ import { dispatch, defaultStaffChannels } from '@/app/lib/notifications/dispatch
 import {
   officerAssignment,
   officerCritical,
+  officerNewInQueue,
 } from '@/app/lib/notifications/templates';
+import {
+  excludeIds,
+  loadOnDutyOfficerIds,
+  uniqueIds,
+} from '@/app/lib/notifications/recipients';
 import { mapIncident } from '@/app/lib/mappers/incident';
 import { computeSlaDueAt } from './sla';
 import type { AgencyCode } from '@/app/types';
@@ -156,10 +162,13 @@ export async function runIncidentAutomation(
       .eq('id', incidentId)
       .maybeSingle();
 
-    if (enriched) {
+    if (enriched && isCreate) {
       const mapped = mapIncident(enriched as Record<string, unknown>);
       const channels = defaultStaffChannels();
+      const agency = (result.agencyCode ?? targetAgency) as AgencyCode | null;
+      const region = String(incident.region ?? '');
 
+      // 1) Assignment → assignee only
       if (result.assignedOfficerId && result.assignedOfficerName) {
         const msg = officerAssignment(mapped, result.assignedOfficerName);
         const dispatched = await dispatch({
@@ -179,23 +188,18 @@ export async function runIncidentAutomation(
         );
       }
 
-      if (isCreate && mapped.severity === 'CRITICAL') {
-        const msg = officerCritical(mapped);
-        const recipients = await loadOnDutyOfficerIds(
-          supabase,
-          result.agencyCode ?? targetAgency,
-          String(incident.region ?? '')
-        );
-        // Always include assignee if any
-        if (result.assignedOfficerId && !recipients.includes(result.assignedOfficerId)) {
-          recipients.push(result.assignedOfficerId);
-        }
-        if (recipients.length > 0) {
+      const onDuty = await loadOnDutyOfficerIds(supabase, agency, region);
+
+      // 2) CRITICAL → on-duty peers (exclude assignee — they already got assignment)
+      if (mapped.severity === 'CRITICAL') {
+        const criticalRecipients = excludeIds(onDuty, result.assignedOfficerId);
+        if (criticalRecipients.length > 0) {
+          const msg = officerCritical(mapped);
           const dispatched = await dispatch({
             channels,
             incidentId,
             eventType: 'incident.critical',
-            recipientUserIds: recipients,
+            recipientUserIds: criticalRecipients,
             href: `/officer/case/${incidentId}`,
             payload: {
               subject: msg.subject,
@@ -207,6 +211,24 @@ export async function runIncidentAutomation(
             ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
           );
         }
+      } else if (!result.assignedOfficerId && onDuty.length > 0) {
+        // 3) Unassigned non-critical → queue ping for on-duty
+        const msg = officerNewInQueue(mapped);
+        const dispatched = await dispatch({
+          channels,
+          incidentId,
+          eventType: 'incident.queued',
+          recipientUserIds: uniqueIds(onDuty),
+          href: `/officer/case/${incidentId}`,
+          payload: {
+            subject: msg.subject,
+            body: msg.body,
+            data: { incidentId, severity: mapped.severity },
+          },
+        });
+        result.notificationsSent.push(
+          ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
+        );
       }
     }
 
@@ -366,14 +388,4 @@ async function loadCandidates(
   }
 
   return [];
-}
-
-async function loadOnDutyOfficerIds(
-  supabase: ReturnType<typeof createServiceSupabase>,
-  agency: AgencyCode | null,
-  region: string
-): Promise<string[]> {
-  if (!agency) return [];
-  const candidates = await loadCandidates(supabase, agency, region);
-  return candidates.map((c) => c.id);
 }

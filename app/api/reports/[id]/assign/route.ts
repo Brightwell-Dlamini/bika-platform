@@ -8,11 +8,12 @@ import { isPublic, canRunWork } from '@/app/lib/rbac';
 import { normalizeReferenceId } from '@/app/lib/utils/referenceId';
 import { logger, newRequestId } from '@/app/lib/logger';
 import { defaultStaffChannels, dispatch } from '@/app/lib/notifications/dispatcher';
-import { officerAssignment } from '@/app/lib/notifications/templates';
+import { officerAssignment, officerUnassigned } from '@/app/lib/notifications/templates';
 import { mapIncident } from '@/app/lib/mappers/incident';
 import type { ApiResponse, Incident } from '@/app/types';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 const bodySchema = z.object({
   officerId: z.string().min(1),
@@ -98,7 +99,7 @@ export async function POST(
 
   const { data: incident, error: fetchError } = await supabase
     .from('incidents')
-    .select('id, status, assigned_officer_id')
+    .select('*')
     .eq('id', id)
     .maybeSingle();
 
@@ -111,6 +112,7 @@ export async function POST(
     return NextResponse.json(body, { status: 404 });
   }
 
+  const previousOfficerId = (incident.assigned_officer_id as string | null) ?? null;
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = {
     assigned_officer_id: officer.id,
@@ -124,7 +126,7 @@ export async function POST(
     patch.status = 'assigned';
   }
 
-  if (incident.assigned_officer_id) {
+  if (previousOfficerId) {
     await supabase
       .from('assignments')
       .update({ unassigned_at: now })
@@ -173,6 +175,7 @@ export async function POST(
       officerName: officer.name,
       agencyCode,
       reason: reason ?? null,
+      previousOfficerId,
     },
   });
 
@@ -184,15 +187,19 @@ export async function POST(
     actorId: caller.id,
   });
 
-  void notifyAssignedOfficer(id, officer.id, officer.name, updated as Record<string, unknown>).catch(
-    (err) => {
-      logger.warn('assign_notify_failed', {
-        requestId,
-        incidentId: id,
-        error: String(err),
-      });
-    }
-  );
+  void notifyAssignmentChange({
+    incidentId: id,
+    newOfficerId: officer.id as string,
+    newOfficerName: officer.name as string,
+    previousOfficerId,
+    row: updated as Record<string, unknown>,
+  }).catch((err) => {
+    logger.warn('assign_notify_failed', {
+      requestId,
+      incidentId: id,
+      error: String(err),
+    });
+  });
 
   const body: ApiResponse<{ incident: Incident }> = {
     ok: true,
@@ -201,25 +208,52 @@ export async function POST(
   return NextResponse.json(body);
 }
 
-async function notifyAssignedOfficer(
-  incidentId: string,
-  officerId: string,
-  officerName: string,
-  row: Record<string, unknown>
-): Promise<void> {
-  const incident = mapIncident(row);
-  const msg = officerAssignment(incident, officerName);
+async function notifyAssignmentChange(input: {
+  incidentId: string;
+  newOfficerId: string;
+  newOfficerName: string;
+  previousOfficerId: string | null;
+  row: Record<string, unknown>;
+}): Promise<void> {
+  const incident = mapIncident(input.row);
+  const channels = defaultStaffChannels();
 
+  // New assignee (skip noisy duplicate only if same person — still OK for self-claim)
+  const assignMsg = officerAssignment(incident, input.newOfficerName);
   await dispatch({
-    channels: defaultStaffChannels(),
-    incidentId,
+    channels,
+    incidentId: input.incidentId,
     eventType: 'officer.assigned',
-    recipientUserIds: [officerId],
-    href: `/officer/case/${incidentId}`,
+    recipientUserIds: [input.newOfficerId],
+    href: `/officer/case/${input.incidentId}`,
     payload: {
-      subject: msg.subject,
-      body: msg.body,
-      data: { incidentId, officerId, officerName },
+      subject: assignMsg.subject,
+      body: assignMsg.body,
+      data: { incidentId: input.incidentId, officerId: input.newOfficerId },
     },
   });
+
+  // Previous officer lost the case
+  if (
+    input.previousOfficerId &&
+    input.previousOfficerId !== input.newOfficerId
+  ) {
+    const leftMsg = officerUnassigned(incident, input.newOfficerName);
+    await dispatch({
+      channels,
+      incidentId: input.incidentId,
+      eventType: 'officer.unassigned',
+      recipientUserIds: [input.previousOfficerId],
+      href: `/officer/queue`,
+      payload: {
+        subject: leftMsg.subject,
+        body: leftMsg.body,
+        data: {
+          incidentId: input.incidentId,
+          previousOfficerId: input.previousOfficerId,
+          newOfficerId: input.newOfficerId,
+        },
+      },
+    });
+  }
 }
