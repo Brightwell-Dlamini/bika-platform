@@ -24,6 +24,7 @@ import {
 import { statusLabel, statusColor } from '@/app/lib/statusLabels';
 import type { AgencyCode, Incident, IncidentStatus, Severity } from '@/app/types';
 import { QueueKeyboardNav } from './_components/QueueKeyboardNav';
+import { QueueSkeleton } from '@/app/components/ui/Skeleton';
 
 const SEVERITY_RAIL: Record<Severity, string> = {
   CRITICAL: 'bg-red-500',
@@ -229,10 +230,7 @@ export default function QueuePage() {
       </div>
 
       {incidents.isLoading ? (
-        <div className="flex items-center justify-center py-20 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin mr-2" />
-          Loading cases…
-        </div>
+        <QueueSkeleton rows={7} />
       ) : incidents.isError ? (
         <div className="bg-slate-900 border border-red-500/40 rounded-2xl p-6 text-center text-red-300 text-sm">
           {incidents.error.message}
@@ -346,7 +344,8 @@ function CaseRow({
               {incident.id}
             </span>
             <span
-              className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${SEVERITY_STYLE[incident.severity]}`}
+              className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${SEVERITY_STYLE[incident.severity]}`
+              }
             >
               {incident.severity}
             </span>
