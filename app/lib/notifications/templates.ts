@@ -2,9 +2,7 @@ import type { Incident } from '@/app/types';
 
 /**
  * BIKA v2 — Message templates.
- *
- * All user-facing notification text lives here. Never build a message
- * with string concatenation at the call site — use a template.
+ * All user-facing notification text lives here.
  */
 
 export interface RenderedMessage {
@@ -13,7 +11,7 @@ export interface RenderedMessage {
 }
 
 // -----------------------------------------------------------------------------
-// Citizen-facing
+// Citizen-facing (legacy SMS/email — not used for bell)
 // -----------------------------------------------------------------------------
 
 export function citizenReceipt(incident: Incident): RenderedMessage {
@@ -30,10 +28,7 @@ export function citizenReceipt(incident: Incident): RenderedMessage {
   };
 }
 
-export function citizenStatusChange(
-  incident: Incident,
-  newStatus: string
-): RenderedMessage {
+export function citizenStatusChange(incident: Incident, newStatus: string): RenderedMessage {
   return {
     subject: `BIKA update — ${incident.id}`,
     body:
@@ -56,7 +51,7 @@ export function citizenResolved(incident: Incident): RenderedMessage {
 }
 
 // -----------------------------------------------------------------------------
-// Officer-facing
+// Officer-facing (in-app + push)
 // -----------------------------------------------------------------------------
 
 export function officerAssignment(incident: Incident, officerName: string): RenderedMessage {
@@ -69,7 +64,21 @@ export function officerAssignment(incident: Incident, officerName: string): Rend
       `Severity: ${incident.severity}\n` +
       `Region: ${incident.region}\n` +
       (incident.slaDueAt ? `SLA due: ${new Date(incident.slaDueAt).toLocaleString()}\n` : '') +
-      `\nOpen the case: /officer/case/${incident.id}`,
+      `\nOpen: /officer/case/${incident.id}`,
+  };
+}
+
+export function officerUnassigned(
+  incident: Incident,
+  newOfficerName: string | null
+): RenderedMessage {
+  return {
+    subject: `[BIKA] Reassigned away: ${incident.id}`,
+    body:
+      `Case ${incident.id} is no longer assigned to you.\n\n` +
+      (newOfficerName ? `Now with: ${newOfficerName}\n` : '') +
+      `Category: ${incident.category}\n` +
+      `Location: ${incident.location}`,
   };
 }
 
@@ -87,6 +96,53 @@ export function officerCritical(incident: Incident): RenderedMessage {
   };
 }
 
+export function officerNewInQueue(incident: Incident): RenderedMessage {
+  return {
+    subject: `[BIKA ${incident.severity}] New case: ${incident.id}`,
+    body:
+      `A new case is waiting in your agency queue.\n\n` +
+      `Reference: ${incident.id}\n` +
+      `Category: ${incident.category}\n` +
+      `Location: ${incident.location}\n` +
+      `Region: ${incident.region}\n` +
+      `Severity: ${incident.severity}\n\n` +
+      `Open: /officer/case/${incident.id}`,
+  };
+}
+
+export function officerStatusChange(
+  incident: Incident,
+  fromStatus: string,
+  toStatus: string,
+  byName: string
+): RenderedMessage {
+  return {
+    subject: `[BIKA] ${incident.id} → ${toStatus.replace(/_/g, ' ')}`,
+    body:
+      `Case ${incident.id} status changed.\n\n` +
+      `From: ${fromStatus.replace(/_/g, ' ')}\n` +
+      `To: ${toStatus.replace(/_/g, ' ')}\n` +
+      `By: ${byName}\n` +
+      `Location: ${incident.location}\n\n` +
+      `Open: /officer/case/${incident.id}`,
+  };
+}
+
+export function officerNoteAdded(
+  incident: Incident,
+  byName: string,
+  isPublic: boolean,
+  preview: string
+): RenderedMessage {
+  return {
+    subject: `[BIKA] Note on ${incident.id}`,
+    body:
+      `${byName} added a ${isPublic ? 'public' : 'internal'} note on ${incident.id}.\n\n` +
+      `${preview.slice(0, 240)}${preview.length > 240 ? '…' : ''}\n\n` +
+      `Open: /officer/case/${incident.id}`,
+  };
+}
+
 export function officerEscalation(
   incident: Incident,
   reason: string,
@@ -100,7 +156,8 @@ export function officerEscalation(
       `Reason: ${reason}\n\n` +
       `Reference: ${incident.id}\n` +
       `Severity: ${incident.severity}\n` +
-      `Region: ${incident.region}`,
+      `Region: ${incident.region}\n\n` +
+      `Open: /officer/case/${incident.id}`,
   };
 }
 
@@ -113,6 +170,7 @@ export function slaBreachAlert(incident: Incident, overdueMins: number): Rendere
       `Severity: ${incident.severity}\n` +
       `Location: ${incident.location}\n` +
       `Assigned: ${incident.assignedOfficerName ?? 'Unassigned'}\n\n` +
-      `Action required immediately.`,
+      `Action required immediately.\n` +
+      `Open: /officer/case/${incident.id}`,
   };
 }
