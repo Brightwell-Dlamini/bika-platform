@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Loader2,
   LogOut,
   Shield,
   User as UserIcon,
@@ -21,6 +20,7 @@ import { useIncidentsRealtime } from '@/app/lib/api/hooks/useRealtime';
 import { getSupabaseBrowserClient } from '@/app/lib/supabase/browser';
 import { canRunWork, isSuperAdmin, ROLE_LABELS } from '@/app/lib/rbac';
 import { SessionIdleGuard } from '@/app/components/SessionIdleGuard';
+import { AdminShellSkeleton } from '@/app/components/ui/Skeleton';
 import { toast } from 'sonner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -40,12 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   if (me.isLoading) {
-    return (
-      <div className="min-h-screen bg-[#05080f] flex items-center justify-center text-slate-400">
-        <Loader2 className="w-6 h-6 animate-spin mr-2" />
-        Loading ops workspace…
-      </div>
-    );
+    return <AdminShellSkeleton />;
   }
 
   if (me.isError || !me.data) {
@@ -75,8 +70,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return null;
   }
 
-  // Command Centre (incl. wall mode) owns its own full-bleed chrome — do not
-  // stack the ops shell navbar or a second avatar/logout cluster.
   if (pathname.startsWith('/command')) {
     return (
       <>
