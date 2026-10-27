@@ -101,7 +101,6 @@
   background-image: linear-gradient(to top, rgba(15, 23, 42, 0.75), rgba(15, 23, 42, 0.25), transparent) !important;
 }
 
-/* Life-threatening / emergency red gradients → light red surface */
 .light-mode .bg-gradient-to-r.from-red-950\/80,
 .light-mode .bg-gradient-to-r.from-red-950,
 .light-mode .from-red-950\/80,
@@ -116,7 +115,6 @@
   border-color: #fca5a5 !important;
 }
 
-/* Body copy on light surfaces */
 .light-mode .text-white,
 .light-mode .text-slate-50,
 .light-mode .text-slate-100,
@@ -124,28 +122,22 @@
   color: #0f172a !important;
 }
 
-/* Keep pure white on brand / emergency / gradient chips */
 .light-mode .text-on-brand,
 .light-mode [data-on-brand='true'],
 .light-mode [data-on-brand='true'] .text-white {
   color: #ffffff !important;
 }
 
-/* Primary yellow actions stay dark ink on gold */
 .light-mode .bg-yellow-500,
 .light-mode .bg-yellow-400 {
   color: #0f172a !important;
 }
 
-/* Status ribbon / emergency strips always keep high-contrast white type */
 .light-mode .brand-ribbon,
 .light-mode .brand-ribbon * {
   color: #ffffff !important;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Public header stays dark in light mode so logo + nav chrome keep contrast   */
-/* -------------------------------------------------------------------------- */
 .light-mode header.public-header,
 .light-mode header.public-header.bg-slate-950\/95,
 .light-mode header.public-header.bg-slate-950\/85,
@@ -165,7 +157,6 @@
   color: #94a3b8 !important;
 }
 
-/* Nav pills: high-contrast inactive + hover that never collapses into bg */
 .light-mode .nav-pill-inactive {
   color: #94a3b8 !important;
 }
@@ -215,7 +206,6 @@
   color: #b91c1c !important;
 }
 
-/* Pure black utility for emergency banner text */
 .light-mode .text-pure-black,
 .light-mode .text-pure-black * {
   color: #000000 !important;
@@ -262,10 +252,62 @@
   }
 }
 
+@keyframes bika-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 [data-kbd-selected='true'] > * {
   outline: 2px solid #eab308;
   outline-offset: 2px;
   border-radius: 1rem;
+}
+
+/* Loading skeletons */
+.bika-skeleton {
+  background-image: linear-gradient(
+    105deg,
+    rgba(30, 41, 59, 0.9) 0%,
+    rgba(51, 65, 85, 0.95) 40%,
+    rgba(30, 41, 59, 0.9) 80%
+  );
+  background-size: 220% 100%;
+  animation: bika-shimmer 1.6s ease-in-out infinite;
+}
+
+.bika-skeleton-map {
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 45%, rgba(234, 179, 8, 0.06), transparent 70%),
+    linear-gradient(160deg, #070b12 0%, #0a0f18 50%, #05080f 100%);
+}
+
+.bika-skeleton-map::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: bika-shimmer 2.2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  background-image: linear-gradient(
+    105deg,
+    rgba(30, 41, 59, 0.95) 0%,
+    rgba(71, 85, 105, 0.9) 45%,
+    rgba(30, 41, 59, 0.95) 90%
+  );
+  background-size: 220% 100%;
+  animation: bika-shimmer 1.6s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -275,5 +317,13 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .bika-skeleton,
+  .bika-skeleton-map::after,
+  .animate-shimmer {
+    animation: none !important;
+    background-image: none !important;
+    background-color: rgba(30, 41, 59, 0.85);
   }
 }
