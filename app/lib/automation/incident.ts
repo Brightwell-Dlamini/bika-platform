@@ -10,6 +10,7 @@ import {
 import {
   excludeIds,
   loadOnDutyOfficerIds,
+  loadSupervisorIds,
   uniqueIds,
 } from '@/app/lib/notifications/recipients';
 import { mapIncident } from '@/app/lib/mappers/incident';
@@ -168,6 +169,30 @@ export async function runIncidentAutomation(
       const agency = (result.agencyCode ?? targetAgency) as AgencyCode | null;
       const region = String(incident.region ?? '');
 
+      // 0) Supervisors / admins — every new incident (oversight)
+      const supervisors = await loadSupervisorIds(supabase);
+      if (supervisors.length > 0) {
+        const adminMsg =
+          mapped.severity === 'CRITICAL'
+            ? officerCritical(mapped)
+            : officerNewInQueue(mapped);
+        const dispatched = await dispatch({
+          channels,
+          incidentId,
+          eventType: 'incident.created.admin',
+          recipientUserIds: supervisors,
+          href: `/officer/case/${incidentId}`,
+          payload: {
+            subject: adminMsg.subject,
+            body: adminMsg.body,
+            data: { incidentId, severity: mapped.severity, audience: 'supervisor' },
+          },
+        });
+        result.notificationsSent.push(
+          ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
+        );
+      }
+
       // 1) Assignment → assignee only
       if (result.assignedOfficerId && result.assignedOfficerName) {
         const msg = officerAssignment(mapped, result.assignedOfficerName);
@@ -190,9 +215,13 @@ export async function runIncidentAutomation(
 
       const onDuty = await loadOnDutyOfficerIds(supabase, agency, region);
 
-      // 2) CRITICAL → on-duty peers (exclude assignee — they already got assignment)
+      // 2) CRITICAL → on-duty peers (exclude assignee + supervisors already notified)
       if (mapped.severity === 'CRITICAL') {
-        const criticalRecipients = excludeIds(onDuty, result.assignedOfficerId);
+        const criticalRecipients = excludeIds(
+          onDuty,
+          result.assignedOfficerId,
+          ...supervisors
+        );
         if (criticalRecipients.length > 0) {
           const msg = officerCritical(mapped);
           const dispatched = await dispatch({
@@ -212,23 +241,26 @@ export async function runIncidentAutomation(
           );
         }
       } else if (!result.assignedOfficerId && onDuty.length > 0) {
-        // 3) Unassigned non-critical → queue ping for on-duty
-        const msg = officerNewInQueue(mapped);
-        const dispatched = await dispatch({
-          channels,
-          incidentId,
-          eventType: 'incident.queued',
-          recipientUserIds: uniqueIds(onDuty),
-          href: `/officer/case/${incidentId}`,
-          payload: {
-            subject: msg.subject,
-            body: msg.body,
-            data: { incidentId, severity: mapped.severity },
-          },
-        });
-        result.notificationsSent.push(
-          ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
-        );
+        // 3) Unassigned non-critical → queue ping for on-duty (not supervisors twice)
+        const queueRecipients = excludeIds(uniqueIds(onDuty), ...supervisors);
+        if (queueRecipients.length > 0) {
+          const msg = officerNewInQueue(mapped);
+          const dispatched = await dispatch({
+            channels,
+            incidentId,
+            eventType: 'incident.queued',
+            recipientUserIds: queueRecipients,
+            href: `/officer/case/${incidentId}`,
+            payload: {
+              subject: msg.subject,
+              body: msg.body,
+              data: { incidentId, severity: mapped.severity },
+            },
+          });
+          result.notificationsSent.push(
+            ...dispatched.results.filter((r) => r.status === 'sent').map((r) => r.channel)
+          );
+        }
       }
     }
 
