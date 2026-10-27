@@ -6,36 +6,57 @@ const DISMISS_KEY = 'bika_pwa_install_dismissed_until';
 const DISMISS_DAYS = 14;
 
 /**
- * Registers the service worker and surfaces a minimal install prompt.
- * Positioned ABOVE the mobile bottom nav so it never steals taps from Report / Track.
+ * Registers the service worker and surfaces install UI when the browser
+ * fires beforeinstallprompt (Chrome/Edge/Android).
  */
 export function PwaRegister() {
-  const [deferred, setDeferred] = useState<any>(null);
+  const [deferred, setDeferred] = useState<Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> } | null>(null);
   const [visible, setVisible] = useState(false);
+  const [installed, setInstalled] = useState(false);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (typeof window === 'undefined') return;
 
-    navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
-      .then((reg) => {
-        if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        reg.update().catch(() => {});
-      })
-      .catch((err) => {
-        console.warn('BIKA service worker registration failed', err);
-      });
+    const standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      // iOS Safari
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    if (standalone) {
+      setInstalled(true);
+      return;
+    }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js', { scope: '/' })
+        .then((reg) => {
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          reg.update().catch(() => {});
+        })
+        .catch((err) => {
+          console.warn('[BIKA PWA] service worker registration failed', err);
+        });
+    }
 
     const dismissedUntil = Number(localStorage.getItem(DISMISS_KEY) || 0);
     if (dismissedUntil && Date.now() < dismissedUntil) return;
 
     const onBip = (e: Event) => {
       e.preventDefault();
-      setDeferred(e);
+      setDeferred(e as Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> });
       setVisible(true);
     };
     window.addEventListener('beforeinstallprompt', onBip);
-    return () => window.removeEventListener('beforeinstallprompt', onBip);
+
+    window.addEventListener('appinstalled', () => {
+      setInstalled(true);
+      setVisible(false);
+      setDeferred(null);
+    });
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBip);
+    };
   }, []);
 
   const dismiss = () => {
@@ -70,7 +91,7 @@ export function PwaRegister() {
     }
   };
 
-  if (!visible) return null;
+  if (installed || !visible) return null;
 
   return (
     <div
@@ -78,7 +99,6 @@ export function PwaRegister() {
       aria-label="Install BIKA"
       style={{
         position: 'fixed',
-        /* Clear the mobile tab bar (~4.5rem) + safe area so Report FAB stays tappable */
         bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))',
         left: 12,
         right: 12,
@@ -102,7 +122,7 @@ export function PwaRegister() {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontWeight: 800, marginBottom: 2 }}>Install BIKA</div>
         <div style={{ color: '#94a3b8', fontSize: 12 }}>
-          Add to home screen for one-tap reporting.
+          Home screen · one-tap reporting · works offline for the shell
         </div>
       </div>
       <button
@@ -122,7 +142,7 @@ export function PwaRegister() {
       </button>
       <button
         type="button"
-        onClick={onInstall}
+        onClick={() => void onInstall()}
         style={{
           background: '#eab308',
           color: '#020617',

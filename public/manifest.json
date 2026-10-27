@@ -1,40 +1,43 @@
 {
+  "id": "/",
   "name": "BIKA – Eswatini Incident & Public Safety Platform",
   "short_name": "BIKA",
-  "description": "Kingdom of Eswatini Real-Time Incident, Transport & Trade Reporting Platform",
-  "start_url": "/",
+  "description": "Kingdom of Eswatini real-time incident, transport and trade reporting platform",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "browser"],
   "background_color": "#020617",
   "theme_color": "#020617",
-  "orientation": "portrait-primary",
-  "scope": "/",
+  "orientation": "any",
   "lang": "en",
+  "dir": "ltr",
   "categories": ["government", "utilities", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/api/pwa-icon/192?purpose=any",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/api/pwa-icon/512?purpose=any",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-maskable-192.png",
+      "src": "/api/pwa-icon/192?purpose=maskable",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/api/pwa-icon/512?purpose=maskable",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
-  ],
-  "prefer_related_applications": false
+  ]
 }

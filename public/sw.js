@@ -1,13 +1,11 @@
-/* BIKA Platform – Service Worker v6.2.1
- * Network-first for documents and Next.js bundles; Web Push handlers for OPS.
+/* BIKA Platform – Service Worker v6.2.2
+ * Network-first for documents; cache shell assets; Web Push for OPS.
  */
-const CACHE_NAME = 'bika-v621-excellence';
+const CACHE_NAME = 'bika-v622-pwa-icons';
 const PRECACHE_URLS = [
   '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/icon-maskable-192.png',
-  '/icons/apple-touch-icon.png',
+  '/api/pwa-icon/192?purpose=any',
+  '/api/pwa-icon/512?purpose=any',
 ];
 
 self.addEventListener('install', (event) => {
@@ -45,58 +43,42 @@ function isNextAsset(url) {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-
   const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
-  if (url.pathname.startsWith('/api') || url.hostname.includes('supabase')) {
-    event.respondWith(
-      fetch(event.request).catch(
-        () =>
-          new Response(JSON.stringify({ offline: true }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 503,
-          })
-      )
-    );
+  // Never cache API (except pwa icons)
+  if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/pwa-icon')) {
     return;
   }
 
   if (isNavigation(event.request)) {
     event.respondWith(
       fetch(event.request)
-        .then((response) => response)
-        .catch(() => caches.match('/') || caches.match(event.request))
-    );
-    return;
-  }
-
-  if (isNextAsset(url)) {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(event.request, copy)).catch(() => {});
+          return res;
         })
-        .catch(() => caches.match(event.request))
+        .catch(() => caches.match(event.request).then((c) => c || caches.match('/')))
     );
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response && response.status === 200 && response.type === 'basic') {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+  if (isNextAsset(url) || url.pathname.startsWith('/api/pwa-icon') || url.pathname === '/manifest.json') {
+    event.respondWith(
+      caches.open(CACHE_NAME).then(async (cache) => {
+        try {
+          const res = await fetch(event.request);
+          if (res.ok) cache.put(event.request, res.clone());
+          return res;
+        } catch {
+          const cached = await cache.match(event.request);
+          if (cached) return cached;
+          throw new Error('offline');
         }
-        return response;
-      });
-    })
-  );
+      })
+    );
+  }
 });
 
 self.addEventListener('message', (event) => {
@@ -105,41 +87,35 @@ self.addEventListener('message', (event) => {
   }
 });
 
-/* ---- Web Push ---- */
 self.addEventListener('push', (event) => {
-  let data = { title: 'BIKA', body: 'New update', href: '/officer' };
+  let payload = { title: 'BIKA', body: 'New update', url: '/' };
   try {
-    if (event.data) data = { ...data, ...event.data.json() };
-  } catch (_) {
-    try {
-      if (event.data) data.body = event.data.text();
-    } catch (__) {}
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    /* ignore */
   }
-
   event.waitUntil(
-    self.registration.showNotification(data.title || 'BIKA', {
-      body: data.body || '',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
-      data: { href: data.href || '/officer' },
-      tag: data.incidentId || 'bika-general',
-      renotify: true,
+    self.registration.showNotification(payload.title || 'BIKA', {
+      body: payload.body || '',
+      icon: '/api/pwa-icon/192?purpose=any',
+      badge: '/api/pwa-icon/192?purpose=any',
+      data: { url: payload.url || payload.href || '/' },
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const href = (event.notification.data && event.notification.data.href) || '/officer';
+  const target = (event.notification.data && event.notification.data.url) || '/';
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
         if ('focus' in client) {
-          client.navigate(href);
+          client.navigate(target);
           return client.focus();
         }
       }
-      if (self.clients.openWindow) return self.clients.openWindow(href);
+      if (self.clients.openWindow) return self.clients.openWindow(target);
     })
   );
 });
