@@ -1,11 +1,14 @@
-/* BIKA Platform – Service Worker v6.2.2
- * Network-first for documents; cache shell assets; Web Push for OPS.
+/* BIKA Platform – Service Worker v6.2.3
+ * Network-first for documents; static PWA icons for WebAPK install.
  */
-const CACHE_NAME = 'bika-v622-pwa-icons';
+const CACHE_NAME = 'bika-v623-static-icons';
 const PRECACHE_URLS = [
   '/manifest.json',
-  '/api/pwa-icon/192?purpose=any',
-  '/api/pwa-icon/512?purpose=any',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-192.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -46,7 +49,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Never cache API (except pwa icons)
   if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/pwa-icon')) {
     return;
   }
@@ -64,7 +66,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  if (isNextAsset(url) || url.pathname.startsWith('/api/pwa-icon') || url.pathname === '/manifest.json') {
+  if (
+    isNextAsset(url) ||
+    url.pathname.startsWith('/icons/') ||
+    url.pathname.startsWith('/api/pwa-icon') ||
+    url.pathname === '/manifest.json'
+  ) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
         try {
@@ -97,8 +104,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || 'BIKA', {
       body: payload.body || '',
-      icon: '/api/pwa-icon/192?purpose=any',
-      badge: '/api/pwa-icon/192?purpose=any',
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
       data: { url: payload.url || payload.href || '/' },
     })
   );

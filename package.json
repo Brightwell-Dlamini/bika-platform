@@ -1,15 +1,17 @@
 {
   "name": "bika-platform",
-  "version": "6.2.1",
+  "version": "6.2.2",
   "private": true,
   "engines": {
     "node": "24.x"
   },
   "scripts": {
-    "dev": "next dev",
+    "prebuild": "node scripts/generate-pwa-icons.js",
+    "dev": "node scripts/generate-pwa-icons.js && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "icons": "node scripts/generate-pwa-icons.js",
     "test:smoke": "node scripts/smoke-reference-id.mjs && node scripts/smoke-transitions.mjs",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "typecheck": "tsc --noEmit"
