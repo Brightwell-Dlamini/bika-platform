@@ -115,11 +115,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   return (
-    <div className="min-h-screen bg-[#05080f] text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-[#05080f] text-slate-100 flex flex-col relative">
       <SessionIdleGuard />
       <div
-        className="pointer-events-none fixed inset-x-0 top-0 h-40 bg-gradient-to-b from-yellow-500/[0.06] to-transparent z-0"
+        className="pointer-events-none fixed inset-0 z-0 opacity-50"
         aria-hidden
+        style={{
+          background:
+            'radial-gradient(ellipse 70% 40% at 50% -5%, rgba(234,179,8,0.07), transparent 55%), radial-gradient(ellipse 40% 30% at 100% 20%, rgba(139,92,246,0.06), transparent 50%)',
+        }}
       />
 
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#070b12]/85 backdrop-blur-xl">
