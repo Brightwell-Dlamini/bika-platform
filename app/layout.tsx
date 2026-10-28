@@ -12,11 +12,11 @@ export const metadata: Metadata = {
     'Kingdom of Eswatini official integrated real-time incident, transport and trade reporting platform. See something, say something.',
   icons: {
     icon: [
-      { url: '/api/pwa-icon/192?purpose=any', type: 'image/png', sizes: '192x192' },
-      { url: '/api/pwa-icon/512?purpose=any', type: 'image/png', sizes: '512x512' },
+      { url: '/icons/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icons/icon-512.png', type: 'image/png', sizes: '512x512' },
     ],
-    shortcut: '/api/pwa-icon/192?purpose=any',
-    apple: [{ url: '/api/pwa-icon/180?purpose=any', type: 'image/png', sizes: '180x180' }],
+    shortcut: '/icons/icon-192.png',
+    apple: [{ url: '/icons/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],
   },
   manifest: '/manifest.json',
   appleWebApp: {
@@ -68,8 +68,8 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="icon" href="/api/pwa-icon/192?purpose=any" type="image/png" sizes="192x192" />
-        <link rel="apple-touch-icon" href="/api/pwa-icon/180?purpose=any" sizes="180x180" />
+        <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
       </head>
       <body className={`${inter.className} bg-slate-950 text-slate-100 antialiased`}>
         <a

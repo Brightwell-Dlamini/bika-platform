@@ -17,6 +17,16 @@ const nextConfig = {
   },
   poweredByHeader: false,
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  async rewrites() {
+    // Stable icon paths (no query strings) — required for reliable Android WebAPK install
+    return [
+      { source: '/icons/icon-192.png', destination: '/api/pwa-icon/192?purpose=any' },
+      { source: '/icons/icon-512.png', destination: '/api/pwa-icon/512?purpose=any' },
+      { source: '/icons/icon-maskable-192.png', destination: '/api/pwa-icon/192?purpose=maskable' },
+      { source: '/icons/icon-maskable-512.png', destination: '/api/pwa-icon/512?purpose=maskable' },
+      { source: '/icons/apple-touch-icon.png', destination: '/api/pwa-icon/180?purpose=any' },
+    ];
+  },
   async headers() {
     return [
       {
