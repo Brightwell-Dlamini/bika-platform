@@ -6,13 +6,19 @@
 const fs = require('fs');
 const path = require('path');
 
-const icons = JSON.parse(
-  fs.readFileSync(path.join(__dirname, 'pwa-icons.json'), 'utf8')
-);
+const files = {
+  'icon-192.png': 'icon-192.b64',
+  'icon-512.png': 'icon-512.b64',
+  'icon-maskable-192.png': 'icon-maskable-192.b64',
+  'icon-maskable-512.png': 'icon-maskable-512.b64',
+  'apple-touch-icon.png': 'apple-touch-icon.b64',
+};
+
 const outDir = path.join(__dirname, '..', 'public', 'icons');
 fs.mkdirSync(outDir, { recursive: true });
 
-for (const [name, b64] of Object.entries(icons)) {
+for (const [name, part] of Object.entries(files)) {
+  const b64 = fs.readFileSync(path.join(__dirname, 'icon-data', part), 'utf8').trim();
   const buf = Buffer.from(b64, 'base64');
   if (buf[0] !== 0x89 || buf[1] !== 0x50) {
     console.error('Invalid PNG', name);
