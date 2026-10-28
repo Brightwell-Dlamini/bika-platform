@@ -7,7 +7,7 @@ import { PwaRegister } from './components/PwaRegister';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'BIKA – Eswatini Real-Time Incident & Public Safety Platform',
+  title: 'BIKA - Eswatini Real-Time Incident & Public Safety Platform',
   description:
     'Kingdom of Eswatini official integrated real-time incident, transport and trade reporting platform. See something, say something.',
   icons: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     shortcut: '/icons/icon-192.png',
     apple: [{ url: '/icons/apple-touch-icon.png', type: 'image/png', sizes: '180x180' }],
   },
-  manifest: '/manifest.json',
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   applicationName: 'BIKA',
   openGraph: {
-    title: 'BIKA – Eswatini Real-Time Incident & Public Safety Platform',
+    title: 'BIKA - Eswatini Real-Time Incident & Public Safety Platform',
     description:
       'Report transport, food-trade, and public-safety issues. Track cases with your BIKA reference ID.',
     type: 'website',
@@ -60,14 +60,26 @@ export default function RootLayout({
                   document.documentElement.setAttribute('data-theme', 'dark');
                   localStorage.setItem('bika_theme', 'dark');
                 } catch (e) {}
+                // Register SW immediately — do not wait for React hydration
+                try {
+                  if ('serviceWorker' in navigator) {
+                    window.addEventListener('beforeinstallprompt', function(e) {
+                      e.preventDefault();
+                      window.__BIKA_DEFERRED_PROMPT = e;
+                    });
+                    navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+                  }
+                } catch (e) {}
               })();
             `,
           }}
         />
+        <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="theme-color" content="#020617" />
         <link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" sizes="180x180" />
       </head>
