@@ -146,7 +146,7 @@ export function PublicHeader() {
           </Link>
 
           <nav
-            className="hidden sm:flex items-center p-1 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-inner"
+            className="hidden sm:flex items-center p-1 rounded-2xl bg-slate-900/80 border border-slate-700/60 shadow-inner backdrop-blur-sm"
             aria-label="Primary"
           >
             <NavPill href="/report" active={reportActive} icon={FileText}>
@@ -185,10 +185,10 @@ export function PublicHeader() {
             <Link
               href="/login"
               aria-current={loginActive ? 'page' : undefined}
-              className={`inline-flex items-center gap-1.5 font-bold px-3 py-2 rounded-xl text-[11px] transition shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500 ${
+              className={`inline-flex items-center gap-1.5 font-bold px-3.5 py-2 rounded-xl text-[11px] transition-all duration-200 shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-yellow-500 ${
                 loginActive
-                  ? 'bg-yellow-400 text-slate-950 shadow-yellow-500/25'
-                  : 'bg-yellow-500 hover:bg-yellow-400 text-slate-950 shadow-yellow-500/15'
+                  ? 'bg-gradient-to-b from-yellow-300 to-yellow-500 text-slate-950 shadow-yellow-500/30'
+                  : 'bg-gradient-to-b from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-yellow-500 text-slate-950 shadow-yellow-500/25 hover:shadow-yellow-500/35'
               }`}
             >
               <LogIn className="w-3.5 h-3.5" />
