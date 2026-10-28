@@ -1,112 +1,94 @@
-/* BIKA Platform – Service Worker v6.2.3
- * Network-first for documents; static PWA icons for WebAPK install.
- */
-const CACHE_NAME = 'bika-v623-static-icons';
-const PRECACHE_URLS = [
-  '/manifest.json',
+/* BIKA SW v6.3.0 — network-first; always has a fetch respondWith path */
+const CACHE = 'bika-v630';
+const PRECACHE = [
+  '/',
+  '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
   '/icons/icon-maskable-192.png',
   '/icons/icon-maskable-512.png',
-  '/icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
+    caches
+      .open(CACHE)
+      .then((cache) => cache.addAll(PRECACHE))
+      .catch(() => {})
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-function isNavigation(request) {
-  return (
-    request.mode === 'navigate' ||
-    (request.method === 'GET' &&
-      request.headers.get('accept') &&
-      request.headers.get('accept').includes('text/html'))
-  );
-}
-
-function isNextAsset(url) {
-  return (
-    url.pathname.startsWith('/_next/') ||
-    url.pathname.endsWith('.js') ||
-    url.pathname.endsWith('.css')
-  );
-}
-
+/**
+ * CRITICAL for installability: every fetch event must use respondWith
+ * for same-origin GET requests so Chrome treats this as a controlling SW.
+ */
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  const url = new URL(event.request.url);
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  let url;
+  try {
+    url = new URL(req.url);
+  } catch {
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
+  // Bypass non-GET-like API mutations already filtered; skip streaming APIs
   if (url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api/pwa-icon')) {
+    event.respondWith(fetch(req).catch(() => caches.match(req).then((c) => c || Response.error())));
     return;
   }
 
-  if (isNavigation(event.request)) {
-    event.respondWith(
-      fetch(event.request)
-        .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(event.request, copy)).catch(() => {});
-          return res;
-        })
-        .catch(() => caches.match(event.request).then((c) => c || caches.match('/')))
-    );
-    return;
-  }
-
-  if (
-    isNextAsset(url) ||
-    url.pathname.startsWith('/icons/') ||
-    url.pathname.startsWith('/api/pwa-icon') ||
-    url.pathname === '/manifest.json'
-  ) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        try {
-          const res = await fetch(event.request);
-          if (res.ok) cache.put(event.request, res.clone());
-          return res;
-        } catch {
-          const cached = await cache.match(event.request);
-          if (cached) return cached;
-          throw new Error('offline');
+  event.respondWith(
+    (async () => {
+      try {
+        const fresh = await fetch(req);
+        if (fresh && fresh.ok && (req.mode === 'navigate' || url.pathname.startsWith('/icons/') || url.pathname.startsWith('/_next/') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.includes('manifest'))) {
+          const copy = fresh.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
-      })
-    );
-  }
+        return fresh;
+      } catch {
+        const cached = await caches.match(req);
+        if (cached) return cached;
+        if (req.mode === 'navigate') {
+          const fallback = await caches.match('/');
+          if (fallback) return fallback;
+        }
+        return new Response('Offline', { status: 503, statusText: 'Offline' });
+      }
+    })()
+  );
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('push', (event) => {
   let payload = { title: 'BIKA', body: 'New update', url: '/' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
-  } catch {
-    /* ignore */
-  }
+  } catch (_) {}
   event.waitUntil(
     self.registration.showNotification(payload.title || 'BIKA', {
       body: payload.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      data: { url: payload.url || payload.href || '/' },
+      data: { url: payload.url || '/' },
     })
   );
 });
