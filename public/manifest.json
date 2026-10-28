@@ -3,7 +3,7 @@
   "name": "BIKA - Eswatini Incident Platform",
   "short_name": "BIKA",
   "description": "Kingdom of Eswatini real-time incident, transport and trade reporting platform",
-  "start_url": "/",
+  "start_url": "/report",
   "scope": "/",
   "display": "standalone",
   "background_color": "#020617",

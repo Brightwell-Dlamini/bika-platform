@@ -1,7 +1,7 @@
-/* BIKA SW v6.3.1 — network-first; always has a fetch respondWith path */
-const CACHE = 'bika-v631';
+/* BIKA SW v6.3.2 — network-first; always has a fetch respondWith path */
+const CACHE = 'bika-v632';
 const PRECACHE = [
-  '/',
+  '/report',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -65,7 +65,7 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(req);
         if (cached) return cached;
         if (req.mode === 'navigate') {
-          const fallback = await caches.match('/');
+          const fallback = await caches.match('/report') || await caches.match('/');
           if (fallback) return fallback;
         }
         return new Response('Offline', { status: 503, statusText: 'Offline' });
@@ -79,7 +79,7 @@ self.addEventListener('message', (event) => {
 });
 
 self.addEventListener('push', (event) => {
-  let payload = { title: 'BIKA', body: 'New update', url: '/' };
+  let payload = { title: 'BIKA', body: 'New update', url: '/report' };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch (_) {}
@@ -88,14 +88,14 @@ self.addEventListener('push', (event) => {
       body: payload.body || '',
       icon: '/icons/icon-192.png',
       badge: '/icons/icon-192.png',
-      data: { url: payload.url || '/' },
+      data: { url: payload.url || '/report' },
     })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = (event.notification.data && event.notification.data.url) || '/';
+  const target = (event.notification.data && event.notification.data.url) || '/report';
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const client of list) {

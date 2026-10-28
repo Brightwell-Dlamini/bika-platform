@@ -3,6 +3,10 @@ import type { MetadataRoute } from 'next';
 /**
  * Served by Next as /manifest.webmanifest with application/manifest+json.
  * Prefer this over public/manifest.json for installability.
+ *
+ * start_url is set to /report because the root path permanently redirects
+ * there. Using a non-redirecting start_url improves install reliability
+ * on Android Chrome (WebAPK).
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -11,7 +15,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'BIKA',
     description:
       'Kingdom of Eswatini real-time incident, transport and trade reporting platform',
-    start_url: '/',
+    start_url: '/report',
     scope: '/',
     display: 'standalone',
     background_color: '#020617',
