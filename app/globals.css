@@ -327,3 +327,186 @@
     background-color: rgba(30, 41, 59, 0.85);
   }
 }
+
+/* -------------------------------------------------------------------------- */
+/* Premium design system — glass, depth, refined accents                       */
+/* -------------------------------------------------------------------------- */
+
+:root {
+  --bika-gold: #eab308;
+  --bika-gold-soft: rgba(234, 179, 8, 0.12);
+  --bika-surface: rgba(15, 23, 42, 0.72);
+  --bika-border: rgba(148, 163, 184, 0.12);
+  --bika-glow: 0 0 40px -8px rgba(234, 179, 8, 0.25);
+}
+
+/* Premium glass card */
+.bika-glass {
+  background: linear-gradient(
+    145deg,
+    rgba(30, 41, 59, 0.55) 0%,
+    rgba(15, 23, 42, 0.75) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  box-shadow:
+    0 4px 24px -4px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+}
+
+.bika-glass-strong {
+  background: linear-gradient(
+    160deg,
+    rgba(30, 41, 59, 0.85) 0%,
+    rgba(15, 23, 42, 0.92) 100%
+  );
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow:
+    0 8px 40px -8px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+/* Premium gold accent ring / glow */
+.bika-glow-gold {
+  box-shadow: var(--bika-glow), 0 4px 20px -4px rgba(0, 0, 0, 0.35);
+}
+
+.bika-glow-gold-hover:hover {
+  box-shadow:
+    0 0 48px -6px rgba(234, 179, 8, 0.35),
+    0 8px 32px -6px rgba(0, 0, 0, 0.45);
+}
+
+/* Refined primary button */
+.bika-btn-primary {
+  background: linear-gradient(135deg, #facc15 0%, #eab308 50%, #ca8a04 100%);
+  color: #0f172a;
+  font-weight: 800;
+  border: none;
+  box-shadow:
+    0 2px 12px -2px rgba(234, 179, 8, 0.45),
+    0 1px 0 0 rgba(255, 255, 255, 0.25) inset;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s ease;
+}
+
+.bika-btn-primary:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    0 4px 20px -2px rgba(234, 179, 8, 0.55),
+    0 1px 0 0 rgba(255, 255, 255, 0.3) inset;
+}
+
+.bika-btn-primary:active {
+  transform: scale(0.98);
+  filter: brightness(0.98);
+}
+
+/* Soft elevated surface */
+.bika-surface {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  box-shadow: 0 4px 24px -6px rgba(0, 0, 0, 0.4);
+}
+
+/* Premium section divider / hairline */
+.bika-hairline {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(234, 179, 8, 0.35),
+    transparent
+  );
+}
+
+/* Subtle noise overlay for depth (optional use) */
+.bika-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  border-radius: inherit;
+  z-index: 0;
+}
+
+/* Premium focus ring */
+.bika-focus:focus-visible {
+  outline: 2px solid #eab308;
+  outline-offset: 3px;
+  border-radius: 0.75rem;
+}
+
+/* Smooth fade-in used across steps */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle scale-in for cards */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Premium text gradient */
+.bika-text-gradient {
+  background: linear-gradient(135deg, #fef08a 0%, #eab308 45%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Refined selection */
+::selection {
+  background: rgba(234, 179, 8, 0.35);
+  color: #f8fafc;
+}
+
+/* Smoother scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Premium scrollbar (WebKit) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
