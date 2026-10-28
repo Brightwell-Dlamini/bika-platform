@@ -1,5 +1,5 @@
-/* BIKA SW v6.3.0 — network-first; always has a fetch respondWith path */
-const CACHE = 'bika-v630';
+/* BIKA SW v6.3.1 — network-first; always has a fetch respondWith path */
+const CACHE = 'bika-v631';
 const PRECACHE = [
   '/',
   '/manifest.webmanifest',
