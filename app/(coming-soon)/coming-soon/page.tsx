@@ -1,13 +1,10 @@
-import Link from 'next/link';
-
 /**
  * Public placeholder while the full product is gated.
- * Reachable at /coming-soon; middleware can rewrite / → here.
+ * Middleware rewrites every app route here when BIKA_COMING_SOON is on.
  */
 export default function ComingSoonPage() {
   return (
     <main className="relative min-h-screen flex flex-col overflow-hidden">
-      {/* ambient */}
       <div className="pointer-events-none absolute inset-0" aria-hidden>
         <div className="absolute -top-32 -right-24 w-[28rem] h-[28rem] rounded-full bg-yellow-500/[0.07] blur-3xl" />
         <div className="absolute bottom-0 -left-20 w-[22rem] h-[22rem] rounded-full bg-emerald-500/[0.05] blur-3xl" />
@@ -55,13 +52,6 @@ export default function ComingSoonPage() {
             </div>
           ))}
         </div>
-
-        <p className="mt-12 text-[11px] text-slate-600">
-          Officials:{' '}
-          <Link href="/login" className="text-slate-400 hover:text-yellow-400 underline-offset-2 hover:underline">
-            Sign in
-          </Link>
-        </p>
       </div>
 
       <footer className="relative z-10 pb-8 text-center text-[10px] text-slate-600 font-medium tracking-wide">
