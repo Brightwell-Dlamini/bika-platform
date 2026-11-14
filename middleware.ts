@@ -2,20 +2,20 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 /**
- * Coming-soon gate — FULL LOCKDOWN
- * --------------------------------
- * BIKA_COMING_SOON=1|true (default) → every app route → /coming-soon
- * BIKA_COMING_SOON=0|false          → live site
+ * Coming-soon gate (optional)
+ * ---------------------------
+ * BIKA_COMING_SOON=1|true  → every app route → /coming-soon
+ * BIKA_COMING_SOON=0|false → live site (default)
  *
- * No page escapes: not /officer, /login, /admin, /api, /report, etc.
- * Only the placeholder + assets needed to render it are exempt.
+ * Live mode is the default. Set the env only when you need to gate the site again.
+ * Placeholder route remains at app/(coming-soon)/coming-soon for optional reuse.
  */
 function comingSoonEnabled() {
-  const v = (process.env.BIKA_COMING_SOON ?? '1').toLowerCase().trim();
-  return v !== '0' && v !== 'false' && v !== 'off' && v !== 'no';
+  const v = (process.env.BIKA_COMING_SOON ?? '0').toLowerCase().trim();
+  return v === '1' || v === 'true' || v === 'on' || v === 'yes';
 }
 
-/** Absolute minimum so the coming-soon page can load. Nothing else. */
+/** Absolute minimum so the coming-soon page can load when gated. */
 function isAssetExempt(path: string) {
   if (path === '/coming-soon') return true;
   if (path.startsWith('/coming-soon/')) return true;
